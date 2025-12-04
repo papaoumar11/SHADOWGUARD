@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, ShieldAlert, Battery, Wifi, Activity } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, Battery, Wifi, Activity, Phone, Edit2, Check } from 'lucide-react';
 import { DeviceStatus, SecurityEvent } from '../types';
 
 interface DashboardProps {
   status: DeviceStatus;
   events: SecurityEvent[];
+  onUpdatePhoneNumber: (number: string) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ status, events }) => {
+const Dashboard: React.FC<DashboardProps> = ({ status, events, onUpdatePhoneNumber }) => {
   const [rotation, setRotation] = useState(0);
+  const [isEditingPhone, setIsEditingPhone] = useState(false);
+  const [tempPhone, setTempPhone] = useState(status.ownerPhoneNumber);
 
   // Rotate the shield slowly
   useEffect(() => {
@@ -17,6 +20,11 @@ const Dashboard: React.FC<DashboardProps> = ({ status, events }) => {
     }, 50);
     return () => clearInterval(interval);
   }, []);
+
+  const handleSavePhone = () => {
+    onUpdatePhoneNumber(tempPhone);
+    setIsEditingPhone(false);
+  };
 
   return (
     <div className="p-6 space-y-6 pb-24">
@@ -48,6 +56,41 @@ const Dashboard: React.FC<DashboardProps> = ({ status, events }) => {
         </div>
       </div>
 
+      {/* Emergency Contact Configuration */}
+      <div className="bg-dark-card p-4 rounded-xl border border-gray-800 shadow-lg">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <Phone size={18} className="text-neon-green" />
+            <span className="font-bold text-sm">Contact d'Urgence</span>
+          </div>
+          <button 
+            onClick={() => isEditingPhone ? handleSavePhone() : setIsEditingPhone(true)}
+            className="text-xs text-neon-blue hover:text-white transition"
+          >
+            {isEditingPhone ? <Check size={16} /> : <Edit2 size={16} />}
+          </button>
+        </div>
+        
+        {isEditingPhone ? (
+          <input 
+            type="tel" 
+            value={tempPhone}
+            onChange={(e) => setTempPhone(e.target.value)}
+            className="w-full bg-black/50 border border-neon-blue/50 rounded px-3 py-2 text-white outline-none focus:border-neon-blue"
+            placeholder="+33 6..."
+            autoFocus
+          />
+        ) : (
+          <div className="flex justify-between items-center bg-black/30 p-2 rounded">
+             <span className="font-mono text-gray-300">{status.ownerPhoneNumber || "Non configuré"}</span>
+             <span className="text-[10px] text-gray-500 uppercase tracking-wider">SMS Alert</span>
+          </div>
+        )}
+        <p className="text-[10px] text-gray-500 mt-2">
+          Ce numéro recevra automatiquement un SMS avec la localisation GPS en cas de vol.
+        </p>
+      </div>
+
       {/* Stats Grid */}
       <div className="grid grid-cols-2 gap-4">
         <div className="bg-dark-card p-4 rounded-xl border border-gray-800 flex flex-col items-center justify-center shadow-lg backdrop-blur-md bg-opacity-80">
@@ -77,7 +120,11 @@ const Dashboard: React.FC<DashboardProps> = ({ status, events }) => {
           ) : (
             events.slice(0, 3).map(event => (
               <div key={event.id} className="flex items-start gap-3 p-3 rounded-lg bg-dark-bg/50 border border-gray-800/50">
-                <div className={`mt-1 w-2 h-2 rounded-full ${event.severity === 'HIGH' || event.severity === 'CRITICAL' ? 'bg-neon-red shadow-[0_0_8px_#ff003c]' : 'bg-neon-blue'}`} />
+                <div className={`mt-1 w-2 h-2 rounded-full ${
+                  event.severity === 'CRITICAL' ? 'bg-neon-red shadow-[0_0_8px_#ff003c]' : 
+                  event.severity === 'HIGH' ? 'bg-orange-500' : 
+                  event.severity === 'MEDIUM' ? 'bg-yellow-500' : 'bg-neon-blue'
+                }`} />
                 <div>
                   <p className="text-sm font-medium text-gray-200">{event.message}</p>
                   <p className="text-xs text-gray-500">{event.timestamp.toLocaleTimeString()}</p>

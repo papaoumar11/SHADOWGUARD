@@ -8,7 +8,7 @@ export enum AppView {
 
 export interface SecurityEvent {
   id: string;
-  type: 'INTRUSION' | 'SPYWARE' | 'SYSTEM' | 'NETWORK';
+  type: 'INTRUSION' | 'SPYWARE' | 'SYSTEM' | 'NETWORK' | 'MESSAGE';
   severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   message: string;
   timestamp: Date;
@@ -29,4 +29,5 @@ export interface DeviceStatus {
   isProtected: boolean;
   lastScan: Date | null;
   location: { lat: number; lng: number } | null;
+  ownerPhoneNumber: string;
 }

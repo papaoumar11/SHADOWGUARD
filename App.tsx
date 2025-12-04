@@ -23,7 +23,8 @@ export default function App() {
     isCharging: false,
     isProtected: true,
     lastScan: new Date(),
-    location: { lat: 48.8566, lng: 2.3522 }
+    location: { lat: 48.8566, lng: 2.3522 },
+    ownerPhoneNumber: "+33 6 12 34 56 78" // Default mock number
   });
 
   const [events, setEvents] = useState<SecurityEvent[]>([
@@ -42,6 +43,28 @@ export default function App() {
       timestamp: new Date(Date.now() - 1000 * 60 * 120)
     }
   ]);
+
+  const handleUpdatePhoneNumber = (number: string) => {
+    setStatus(prev => ({ ...prev, ownerPhoneNumber: number }));
+    setEvents(prev => [{
+      id: Date.now().toString(),
+      type: 'SYSTEM',
+      severity: 'LOW',
+      message: `Numéro d'urgence mis à jour : ${number}`,
+      timestamp: new Date()
+    }, ...prev]);
+  };
+
+  const sendEmergencyAlert = () => {
+    setEvents(prev => [{
+      id: Date.now().toString(),
+      type: 'MESSAGE',
+      severity: 'HIGH',
+      message: `SMS d'urgence envoyé au ${status.ownerPhoneNumber}`,
+      timestamp: new Date()
+    }, ...prev]);
+    console.log(`Sending SMS to ${status.ownerPhoneNumber}: ALERT! Phone Stolen. Location: ${status.location?.lat}, ${status.location?.lng}`);
+  };
 
   // Alarm Sound Effect (Oscillator)
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -186,7 +209,7 @@ export default function App() {
 
       const dataUrl = canvas.toDataURL('image/png');
       setCaptures(prev => {
-         if (prev.some(c => c.type === 'SCREEN')) return prev; 
+         // Allow multiple screenshots to track screen state over time
          return [...prev, { type: 'SCREEN', url: dataUrl, timestamp: new Date() }];
       });
     }
@@ -219,15 +242,17 @@ export default function App() {
       interval = setInterval(playAlarm, 600);
       startCamera();
 
-      // Take a photo every 2 seconds
+      // Take a photo AND screenshot every 2 seconds to build an evidence timeline
       photoInterval = setInterval(() => {
         takeThiefPhoto();
+        takeScreenshot(); 
       }, 2000);
 
-      // Take a screenshot shortly after alarm trigger
+      // Initial immediate capture
       setTimeout(() => {
         takeScreenshot();
-      }, 500); // Reduced delay to capture faster
+        takeThiefPhoto(); 
+      }, 500);
 
     } else {
       stopCamera();
@@ -251,6 +276,11 @@ export default function App() {
     };
     setEvents(prev => [newEvent, ...prev]);
     setStatus(prev => ({ ...prev, isProtected: false }));
+    
+    // Auto-send emergency SMS when alarm triggers
+    setTimeout(() => {
+      sendEmergencyAlert();
+    }, 1000);
   };
 
   const stopAlarm = () => {
@@ -325,10 +355,26 @@ export default function App() {
         <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-neon-blue/10 to-transparent pointer-events-none" />
 
         <div className="flex-1 overflow-y-auto overflow-x-hidden relative scroll-smooth">
-          {currentView === AppView.DASHBOARD && <Dashboard status={status} events={events} />}
-          {currentView === AppView.ANTI_THEFT && <AntiTheft onTriggerAlarm={triggerAlarm} isAlarmActive={isAlarmActive} />}
+          {currentView === AppView.DASHBOARD && (
+            <Dashboard 
+              status={status} 
+              events={events} 
+              onUpdatePhoneNumber={handleUpdatePhoneNumber}
+            />
+          )}
+          {currentView === AppView.ANTI_THEFT && (
+            <AntiTheft 
+              onTriggerAlarm={triggerAlarm} 
+              isAlarmActive={isAlarmActive} 
+            />
+          )}
           {currentView === AppView.ANTI_SPY && <AntiSpy />}
-          {currentView === AppView.REMOTE && <RemoteControl onTriggerRemoteCamera={triggerRemoteCamera} />}
+          {currentView === AppView.REMOTE && (
+            <RemoteControl 
+              onTriggerRemoteCamera={triggerRemoteCamera} 
+              onSendAlert={sendEmergencyAlert}
+            />
+          )}
           {currentView === AppView.REPORTS && <Reports />}
         </div>
         

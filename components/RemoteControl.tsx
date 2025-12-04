@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { MapPin, Lock, Camera, Volume2, Trash2 } from 'lucide-react';
+import { MapPin, Lock, Camera, Volume2, Trash2, MessageSquare } from 'lucide-react';
 
 interface RemoteControlProps {
   onTriggerRemoteCamera: () => void;
+  onSendAlert: () => void;
 }
 
-const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera }) => {
+const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, onSendAlert }) => {
   const [activeAction, setActiveAction] = useState<string | null>(null);
 
   const performAction = (action: string) => {
@@ -13,6 +14,9 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera }) 
     
     if (action === 'CAMERA') {
       onTriggerRemoteCamera();
+    }
+    if (action === 'MESSAGE') {
+      onSendAlert();
     }
 
     setTimeout(() => setActiveAction(null), 3000);
@@ -112,13 +116,23 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera }) 
         </button>
 
         <button 
-          onClick={() => performAction('WIPE')}
+          onClick={() => performAction('MESSAGE')}
           className="bg-dark-card p-4 rounded-xl border border-gray-800 flex flex-col items-center justify-center gap-2 hover:bg-gray-800 transition active:scale-95 group"
         >
-          <div className="p-3 rounded-full bg-neon-red/10 group-hover:bg-neon-red/20">
-            <Trash2 size={24} className="text-neon-red" />
+          <div className="p-3 rounded-full bg-yellow-500/10 group-hover:bg-yellow-500/20">
+            <MessageSquare size={24} className="text-yellow-500" />
           </div>
-          <span className="font-medium text-sm text-neon-red">Effacer Tout</span>
+          <span className="font-medium text-sm text-yellow-500">SOS Alert</span>
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1">
+        <button 
+          onClick={() => performAction('WIPE')}
+          className="bg-dark-card p-3 rounded-xl border border-gray-800 flex items-center justify-center gap-2 hover:bg-gray-800 transition active:scale-95 group"
+        >
+          <Trash2 size={18} className="text-neon-red" />
+          <span className="font-medium text-sm text-neon-red">Effacement Sécurisé</span>
         </button>
       </div>
 
@@ -133,6 +147,13 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera }) 
           <>
             <p className="text-neon-green">[CMD] Requesting FRONT_CAMERA_SNAPSHOT...</p>
             <p className="text-neon-green animate-pulse"> >> UPLOADING EVIDENCE TO CLOUD...</p>
+          </>
+        )}
+        {activeAction === 'MESSAGE' && (
+          <>
+            <p className="text-yellow-500">[CMD] SENDING EMERGENCY SMS TO OWNER...</p>
+            <p className="text-yellow-500"> >> MSG: "DEVICE FOUND AT 48.85 N, 2.35 E"</p>
+            <p className="text-neon-green"> >> DELIVERY CONFIRMED</p>
           </>
         )}
         {activeAction === 'WIPE' && <p className="text-neon-red">[WARN] WIPE_DATA initiated. Awaiting confirmation...</p>}
