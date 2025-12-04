@@ -8,7 +8,7 @@ export enum AppView {
 
 export interface SecurityEvent {
   id: string;
-  type: 'INTRUSION' | 'SPYWARE' | 'SYSTEM' | 'NETWORK' | 'MESSAGE';
+  type: 'INTRUSION' | 'SPYWARE' | 'SYSTEM' | 'NETWORK' | 'MESSAGE' | 'BAIT_ATTEMPT';
   severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   message: string;
   timestamp: Date;

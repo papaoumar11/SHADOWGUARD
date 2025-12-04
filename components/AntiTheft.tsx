@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Smartphone, Bell, Eye, Lock, Volume2, Fingerprint, Ghost, AlertTriangle, Unlock } from 'lucide-react';
+import { SecurityEvent } from '../types';
 
 interface AntiTheftProps {
   onTriggerAlarm: () => void;
   isAlarmActive: boolean;
+  onLogEvent: (event: Omit<SecurityEvent, 'id'>) => void;
 }
 
-const AntiTheft: React.FC<AntiTheftProps> = ({ onTriggerAlarm, isAlarmActive }) => {
+const AntiTheft: React.FC<AntiTheftProps> = ({ onTriggerAlarm, isAlarmActive, onLogEvent }) => {
   const [armed, setArmed] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [sensitivity, setSensitivity] = useState(5);
@@ -71,6 +73,14 @@ const AntiTheft: React.FC<AntiTheftProps> = ({ onTriggerAlarm, isAlarmActive }) 
           // Wrong PIN
           setErrorShake(true);
           setBaitAttempts(prev => prev + 1);
+          
+          onLogEvent({
+            type: 'BAIT_ATTEMPT',
+            severity: 'MEDIUM',
+            message: `Mode Appât: Tentative de déverrouillage échouée (PIN: ${newPin})`,
+            timestamp: new Date()
+          });
+
           setTimeout(() => {
             setEnteredPin("");
             setErrorShake(false);

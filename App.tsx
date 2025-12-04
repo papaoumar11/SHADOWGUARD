@@ -7,6 +7,7 @@ import RemoteControl from './components/RemoteControl';
 import Reports from './components/Reports';
 import { AppView, DeviceStatus, SecurityEvent } from './types';
 import { Siren, X, Camera, Smartphone, Eye, MessageSquare, CheckCircle, Satellite, ShieldAlert, AlertTriangle, Lock } from 'lucide-react';
+import { supabase } from './services/supabaseClient';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<AppView>(AppView.DASHBOARD);
@@ -29,26 +30,93 @@ export default function App() {
     isCharging: false,
     isProtected: true,
     lastScan: new Date(),
-    location: null, // Start with null, will update with real GPS
-    ownerPhoneNumber: "+33 6 12 34 56 78" // Default mock number
+    location: null, 
+    ownerPhoneNumber: "" 
   });
 
-  const [events, setEvents] = useState<SecurityEvent[]>([
-    {
-      id: '1',
-      type: 'INTRUSION',
-      severity: 'HIGH',
-      message: '3 Tentatives de déverrouillage échouées',
-      timestamp: new Date(Date.now() - 1000 * 60 * 30)
-    },
-    {
-      id: '2',
-      type: 'SPYWARE',
-      severity: 'MEDIUM',
-      message: 'App "Flashlight" a accédé au micro',
-      timestamp: new Date(Date.now() - 1000 * 60 * 120)
-    }
-  ]);
+  const [events, setEvents] = useState<SecurityEvent[]>([]);
+
+  // --- SUPABASE INTEGRATION ---
+
+  // 1. Fetch Initial Data (Events & Settings)
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      // Fetch Settings
+      const { data: settings } = await supabase.from('settings').select('*').single();
+      if (settings && settings.owner_phone) {
+        setStatus(prev => ({ ...prev, ownerPhoneNumber: settings.owner_phone }));
+      }
+
+      // Fetch Events
+      const { data: remoteEvents, error } = await supabase
+        .from('events')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (remoteEvents) {
+        const formattedEvents: SecurityEvent[] = remoteEvents.map((e: any) => ({
+          id: e.id,
+          type: e.type,
+          severity: e.severity,
+          message: e.message,
+          timestamp: new Date(e.created_at)
+        }));
+        setEvents(formattedEvents);
+      } else if (error) {
+        console.warn("Supabase Events fetch failed (Tables might not exist yet):", error.message);
+        // Fallback mock events
+        setEvents([
+            {
+            id: '1',
+            type: 'INTRUSION',
+            severity: 'HIGH',
+            message: '3 Tentatives de déverrouillage échouées',
+            timestamp: new Date(Date.now() - 1000 * 60 * 30)
+            },
+            {
+            id: '2',
+            type: 'SPYWARE',
+            severity: 'MEDIUM',
+            message: 'App "Flashlight" a accédé au micro',
+            timestamp: new Date(Date.now() - 1000 * 60 * 120)
+            }
+        ]);
+      }
+    };
+
+    fetchInitialData();
+
+    // 2. Realtime Subscription for new Events
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'events',
+        },
+        (payload) => {
+          const newEvent = payload.new;
+          setEvents((prev) => [
+            {
+              id: newEvent.id,
+              type: newEvent.type,
+              severity: newEvent.severity,
+              message: newEvent.message,
+              timestamp: new Date(newEvent.created_at),
+            },
+            ...prev,
+          ]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   // Check for existing lockdown on mount (Persistence)
   useEffect(() => {
@@ -89,13 +157,12 @@ export default function App() {
           }));
         },
         (error) => {
-           // Fixed: Log specific error properties to avoid [object Object]
            console.warn(`GPS Watch Error: ${error.message} (Code: ${error.code})`);
         },
         {
           enableHighAccuracy: true,
-          maximumAge: 5000, // Accept cached positions up to 5s old
-          timeout: 20000    // Wait up to 20s before timing out
+          maximumAge: 5000, 
+          timeout: 20000   
         }
       );
     } else {
@@ -121,19 +188,27 @@ export default function App() {
     }));
   };
 
-  const handleUpdatePhoneNumber = (number: string) => {
+  const handleUpdatePhoneNumber = async (number: string) => {
     setStatus(prev => ({ ...prev, ownerPhoneNumber: number }));
-    setEvents(prev => [{
-      id: Date.now().toString(),
-      type: 'SYSTEM',
-      severity: 'LOW',
-      message: `Numéro d'urgence mis à jour : ${number}`,
-      timestamp: new Date()
-    }, ...prev]);
+    
+    // Optimistic Update
+    const sysEvent: Omit<SecurityEvent, 'id'> = {
+        type: 'SYSTEM',
+        severity: 'LOW',
+        message: `Numéro d'urgence mis à jour : ${number}`,
+        timestamp: new Date()
+    };
+    handleAddEvent(sysEvent);
+
+    // Persist to Supabase
+    const { error } = await supabase
+        .from('settings')
+        .upsert({ id: 1, owner_phone: number });
+
+    if (error) console.error("Failed to save phone number:", error);
   };
 
   const sendEmergencyAlert = () => {
-    // Validation check
     if (!status.ownerPhoneNumber || status.ownerPhoneNumber === "Non configuré") {
       console.warn("Emergency SMS skipped: No phone number configured");
       return;
@@ -141,18 +216,16 @@ export default function App() {
 
     setSmsSent(true);
     
-    // Construct GPS string
     const locString = status.location 
         ? `${status.location.lat.toFixed(5)}, ${status.location.lng.toFixed(5)}` 
         : "Recherche Satellite...";
 
-    setEvents(prev => [{
-      id: Date.now().toString(),
+    handleAddEvent({
       type: 'MESSAGE',
       severity: 'HIGH',
       message: `SMS d'urgence envoyé au ${status.ownerPhoneNumber} [GPS: ${locString}]`,
       timestamp: new Date()
-    }, ...prev]);
+    });
     
     console.log(`Sending SMS to ${status.ownerPhoneNumber}: ALERT! Phone Stolen. GPS: ${locString}`);
   };
@@ -162,6 +235,12 @@ export default function App() {
     setIsSystemLocked(true);
     localStorage.setItem('shadowguard_locked', 'true');
     console.warn("SYSTEM LOCKDOWN INITIATED: Integrity Violation");
+    handleAddEvent({
+        type: 'SYSTEM',
+        severity: 'CRITICAL',
+        message: 'VERROUILLAGE SYSTÈME DÉCLENCHÉ',
+        timestamp: new Date()
+    });
   };
 
   // Logic to unlock system
@@ -174,13 +253,12 @@ export default function App() {
                 setIsSystemLocked(false);
                 setUnlockPin("");
                 localStorage.removeItem('shadowguard_locked');
-                setEvents(prev => [{
-                  id: Date.now().toString(),
-                  type: 'SYSTEM',
-                  severity: 'HIGH',
-                  message: 'Système restauré après verrouillage de sécurité',
-                  timestamp: new Date()
-                }, ...prev]);
+                handleAddEvent({
+                    type: 'SYSTEM',
+                    severity: 'HIGH',
+                    message: 'Système restauré après verrouillage de sécurité',
+                    timestamp: new Date()
+                });
             } else {
                 setUnlockError(true);
                 setTimeout(() => {
@@ -190,6 +268,21 @@ export default function App() {
             }
         }
     }
+  };
+
+  const handleAddEvent = async (event: Omit<SecurityEvent, 'id'>) => {
+    // Optimistic UI update
+    const tempId = Date.now().toString();
+    setEvents(prev => [{ id: tempId, ...event }, ...prev]);
+
+    // Send to Supabase
+    const { error } = await supabase.from('events').insert({
+        type: event.type,
+        severity: event.severity,
+        message: event.message
+    });
+
+    if (error) console.error("Error logging event to Supabase:", error);
   };
 
   // Alarm Sound Effect (Oscillator)
@@ -350,13 +443,12 @@ export default function App() {
     setTimeout(() => {
       takeThiefPhoto();
       
-      setEvents(prev => [{
-        id: Date.now().toString(),
+      handleAddEvent({
         type: 'SYSTEM',
         severity: 'LOW',
         message: 'Photo à distance capturée (Mode Discret)',
         timestamp: new Date()
-      }, ...prev]);
+      });
 
       stopCamera();
     }, 1500);
@@ -401,14 +493,14 @@ export default function App() {
     setCaptures([]);
     setSmsSent(false); 
     setIsAlarmActive(true);
-    const newEvent: SecurityEvent = {
-      id: Date.now().toString(),
+    
+    handleAddEvent({
       type: 'INTRUSION',
       severity: 'CRITICAL',
       message: 'Mouvement détecté - Alarme déclenchée',
       timestamp: new Date()
-    };
-    setEvents(prev => [newEvent, ...prev]);
+    });
+
     setStatus(prev => ({ ...prev, isProtected: false }));
     
     // Auto-send emergency SMS when alarm triggers
@@ -576,7 +668,8 @@ export default function App() {
           {currentView === AppView.ANTI_THEFT && (
             <AntiTheft 
               onTriggerAlarm={triggerAlarm} 
-              isAlarmActive={isAlarmActive} 
+              isAlarmActive={isAlarmActive}
+              onLogEvent={handleAddEvent}
             />
           )}
           {currentView === AppView.ANTI_SPY && <AntiSpy />}

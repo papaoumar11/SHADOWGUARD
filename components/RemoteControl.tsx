@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Lock, Camera, Volume2, Trash2, MessageSquare, Check, AlertTriangle, Satellite } from 'lucide-react';
+import { MapPin, Lock, Camera, Volume2, Trash2, MessageSquare, Check, AlertTriangle, Satellite, Loader2 } from 'lucide-react';
 
 interface RemoteControlProps {
   onTriggerRemoteCamera: () => void;
@@ -14,6 +14,7 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
   const [showCameraSuccess, setShowCameraSuccess] = useState(false);
   const [showWipeConfirm, setShowWipeConfirm] = useState(false);
   const [closingCamera, setClosingCamera] = useState(false);
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
 
   // Manage the lifecycle of actions, specifically the Camera Scanning simulation
   useEffect(() => {
@@ -23,22 +24,26 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
 
     if (activeAction === 'CAMERA') {
       // 1. Simulate Scanning Phase (1.5s)
-      // The visual 'animate-scan' runs during this time because showCameraSuccess is false
       scanTimer = setTimeout(() => {
         setShowCameraSuccess(true);
       }, 1500);
 
-      // 2. Start Closing Visuals (after success has been visible for ~2s)
+      // 2. Start Closing Visuals
       closeStartTimer = setTimeout(() => {
         setClosingCamera(true);
       }, 3500);
 
-      // 3. Auto-close and reset everything
+      // 3. Auto-close
       resetTimer = setTimeout(() => {
         setActiveAction(null);
         setShowCameraSuccess(false);
         setClosingCamera(false);
       }, 4500);
+    } else if (activeAction === 'MESSAGE') {
+       // Handled manually in performAction for timing
+       resetTimer = setTimeout(() => {
+        setActiveAction(null);
+       }, 5000);
     } else if (activeAction) {
       // For other actions, just auto-close after a delay
       resetTimer = setTimeout(() => {
@@ -65,17 +70,28 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
     setActiveAction(action);
     setShowCameraSuccess(false);
     setClosingCamera(false);
+    setIsSendingMessage(false);
 
-    // Show temporary success feedback for immediate commands
-    if (['LOCK', 'ALARM', 'MESSAGE'].includes(action)) {
+    // MESSAGE Action with Network Simulation
+    if (action === 'MESSAGE') {
+      setIsSendingMessage(true);
+      setTimeout(() => {
+        onSendAlert();
+        setIsSendingMessage(false);
+        setSuccessAction('MESSAGE');
+        setTimeout(() => setSuccessAction(null), 2000);
+      }, 2000);
+      return;
+    }
+
+    // Immediate actions
+    if (['LOCK', 'ALARM'].includes(action)) {
       setSuccessAction(action);
       setTimeout(() => setSuccessAction(null), 2000);
     }
     
     if (action === 'CAMERA') {
       onTriggerRemoteCamera();
-    } else if (action === 'MESSAGE') {
-      onSendAlert();
     }
   };
 
@@ -291,12 +307,18 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
 
         <button 
           onClick={() => performAction('MESSAGE')}
-          className="bg-dark-card p-4 rounded-xl border border-gray-800 flex flex-col items-center justify-center gap-2 hover:bg-dark-surface transition active:scale-95 group relative overflow-hidden"
+          disabled={isSendingMessage}
+          className="bg-dark-card p-4 rounded-xl border border-gray-800 flex flex-col items-center justify-center gap-2 hover:bg-dark-surface transition active:scale-95 group relative overflow-hidden disabled:opacity-80 disabled:cursor-not-allowed"
         >
           {successAction === 'MESSAGE' ? (
              <div className="absolute inset-0 bg-dark-surface flex flex-col items-center justify-center animate-in fade-in duration-300">
                <Check size={24} className="text-yellow-500 mb-1" />
                <span className="text-[10px] font-bold text-yellow-500 tracking-widest">ALERT SENT</span>
+             </div>
+          ) : isSendingMessage ? (
+             <div className="absolute inset-0 bg-dark-surface flex flex-col items-center justify-center animate-in fade-in duration-300">
+               <Loader2 size={24} className="text-yellow-500 mb-1 animate-spin" />
+               <span className="text-[10px] font-bold text-yellow-500 tracking-widest animate-pulse">SENDING...</span>
              </div>
           ) : (
             <>
@@ -347,9 +369,16 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
         )}
         {activeAction === 'MESSAGE' && (
           <>
-            <p className="text-yellow-500">[CMD] SENDING EMERGENCY SMS TO OWNER...</p>
-            {location && <p className="text-yellow-500"> >> APPENDING GPS DATA: {location.lat.toFixed(4)}, {location.lng.toFixed(4)}</p>}
-            <p className="text-neon-green"> >> DELIVERY CONFIRMED</p>
+            <p className="text-yellow-500">[CMD] INITIATING SECURE SMS PROTOCOL...</p>
+            {isSendingMessage ? (
+                <p className="text-gray-500 animate-pulse"> >> CONTACTING CARRIER NETWORK...</p>
+            ) : successAction === 'MESSAGE' ? (
+                <>
+                    <p className="text-yellow-500"> >> MESSAGE DISPATCHED TO OWNER</p>
+                    {location && <p className="text-yellow-500"> >> APPENDED GPS: {location.lat.toFixed(4)}, {location.lng.toFixed(4)}</p>}
+                    <p className="text-neon-green font-bold"> >> DELIVERY CONFIRMED</p>
+                </>
+            ) : null}
           </>
         )}
         {activeAction === 'WIPE' && (
