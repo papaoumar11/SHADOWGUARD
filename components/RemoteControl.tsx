@@ -72,8 +72,8 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera }) 
           </div>
 
           <div className="absolute bottom-3 right-3 text-right">
-             <div className="text-[10px] font-mono text-neon-green">ISO 800</div>
-             <div className="text-[10px] font-mono text-neon-blue animate-pulse">ACQUIRING TARGET...</div>
+             <div className="text-[10px] font-mono text-neon-green opacity-70">ISO 800</div>
+             <div className="text-[10px] font-mono text-neon-blue animate-pulse tracking-widest">ACQUIRING TARGET...</div>
           </div>
         </div>
 
