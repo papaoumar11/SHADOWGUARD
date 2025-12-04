@@ -61,7 +61,7 @@ export default function App() {
             }
           }));
         },
-        (error) => console.warn("Initial GPS fetch failed:", error)
+        (error) => console.warn(`Initial GPS fetch failed: ${error.message} (${error.code})`)
       );
 
       // 2. Watch for updates (simulating satellite tracking)
@@ -76,12 +76,13 @@ export default function App() {
           }));
         },
         (error) => {
-           console.error("GPS Watch Error:", error);
+           // Fixed: Log specific error properties to avoid [object Object]
+           console.warn(`GPS Watch Error: ${error.message} (Code: ${error.code})`);
         },
         {
           enableHighAccuracy: true,
-          maximumAge: 0,
-          timeout: 5000
+          maximumAge: 5000, // Accept cached positions up to 5s old
+          timeout: 20000    // Wait up to 20s before timing out
         }
       );
     } else {
@@ -172,6 +173,8 @@ export default function App() {
       // Attach to the hidden capture video element
       if (captureVideoRef.current) {
         captureVideoRef.current.srcObject = stream;
+        // Wait for video to actually play to ensure we don't capture black frame
+        await captureVideoRef.current.play().catch(e => console.error("Video play error", e));
       }
       return stream;
     } catch (err) {
@@ -317,19 +320,24 @@ export default function App() {
 
     if (isAlarmActive) {
       interval = setInterval(playAlarm, 600);
-      startCamera();
+      
+      // Changed logic: Wait for camera stream to be fully ready before starting capture sequence
+      startCamera().then((stream) => {
+        if (stream) {
+            // Immediate capture sequence once camera is ready
+            // We use a small timeout to allow the video element to process the first frame
+            setTimeout(() => {
+               takeThiefPhoto();
+               takeScreenshot();
+            }, 300);
 
-      // Take a photo AND screenshot every 2 seconds to build an evidence timeline
-      photoInterval = setInterval(() => {
-        takeThiefPhoto();
-        takeScreenshot(); 
-      }, 2000);
-
-      // Initial immediate capture
-      setTimeout(() => {
-        takeScreenshot();
-        takeThiefPhoto(); 
-      }, 500);
+            // Then Periodic capture every 2 seconds
+            photoInterval = setInterval(() => {
+              takeThiefPhoto();
+              takeScreenshot(); 
+            }, 2000);
+        }
+      });
 
     } else {
       stopCamera();

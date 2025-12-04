@@ -10,12 +10,18 @@ const AntiTheft: React.FC<AntiTheftProps> = ({ onTriggerAlarm, isAlarmActive }) 
   const [armed, setArmed] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [sensitivity, setSensitivity] = useState(5);
+  const [showConfirm, setShowConfirm] = useState(false);
   
   // Simulation for web environment
   const triggerMotionSim = () => {
     if (armed && !isAlarmActive) {
-      onTriggerAlarm();
+      setShowConfirm(true);
     }
+  };
+
+  const confirmAlarm = () => {
+    setShowConfirm(false);
+    onTriggerAlarm();
   };
 
   useEffect(() => {
@@ -29,6 +35,13 @@ const AntiTheft: React.FC<AntiTheftProps> = ({ onTriggerAlarm, isAlarmActive }) 
     return () => clearTimeout(timer);
   }, [countdown]);
 
+  // Logic to acknowledge alarm activation for Photo Trap feature
+  useEffect(() => {
+    if (isAlarmActive) {
+        console.log("AntiTheft: System Active. Photo sequence initiated.");
+    }
+  }, [isAlarmActive]);
+
   const toggleArming = () => {
     if (armed) {
       setArmed(false);
@@ -38,7 +51,7 @@ const AntiTheft: React.FC<AntiTheftProps> = ({ onTriggerAlarm, isAlarmActive }) 
   };
 
   return (
-    <div className="p-6 space-y-6 pb-24 h-full flex flex-col">
+    <div className="p-6 space-y-6 pb-24 h-full flex flex-col relative">
       <div className="text-center">
         <h2 className="text-2xl font-bold text-white mb-1">Anti-Vol Intelligent</h2>
         <p className="text-gray-400 text-sm">Protection physique et détection de mouvement</p>
@@ -126,6 +139,37 @@ const AntiTheft: React.FC<AntiTheftProps> = ({ onTriggerAlarm, isAlarmActive }) 
         >
           [DEMO] SIMULER MOUVEMENT
         </button>
+      )}
+
+      {/* Confirmation Modal */}
+      {showConfirm && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in duration-200 rounded-xl">
+            <div className="bg-dark-card border border-neon-red p-6 rounded-xl shadow-[0_0_30px_rgba(255,0,60,0.2)] w-full max-w-sm text-center relative overflow-hidden">
+                <div className="w-16 h-16 bg-neon-red/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-neon-red/30">
+                    <Volume2 size={32} className="text-neon-red animate-pulse" />
+                </div>
+                
+                <h3 className="text-xl font-bold text-white mb-2">Attention</h3>
+                <p className="text-gray-300 text-sm mb-6 leading-relaxed">
+                    Voulez-vous vraiment déclencher l'alarme ?
+                </p>
+                
+                <div className="flex gap-3">
+                    <button 
+                        onClick={() => setShowConfirm(false)}
+                        className="flex-1 py-3 rounded-lg border border-gray-700 text-gray-400 hover:text-white hover:bg-dark-surface transition font-medium text-sm"
+                    >
+                        Annuler
+                    </button>
+                    <button 
+                        onClick={confirmAlarm}
+                        className="flex-1 py-3 rounded-lg bg-neon-red text-black font-bold hover:bg-red-500 transition shadow-[0_0_20px_rgba(255,0,60,0.3)] text-sm"
+                    >
+                        Confirmer
+                    </button>
+                </div>
+            </div>
+        </div>
       )}
     </div>
   );
