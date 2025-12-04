@@ -6,7 +6,7 @@ import AntiSpy from './components/AntiSpy';
 import RemoteControl from './components/RemoteControl';
 import Reports from './components/Reports';
 import { AppView, DeviceStatus, SecurityEvent } from './types';
-import { Siren, X, Camera, Smartphone, Eye, MessageSquare, CheckCircle } from 'lucide-react';
+import { Siren, X, Camera, Smartphone, Eye, MessageSquare, CheckCircle, Satellite } from 'lucide-react';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<AppView>(AppView.DASHBOARD);
@@ -92,6 +92,20 @@ export default function App() {
       if (watchId) navigator.geolocation.clearWatch(watchId);
     };
   }, []);
+
+  const simulateGPS = () => {
+    // Simulates receiving a signal from Paris with slight jitter
+    const parisLat = 48.8566;
+    const parisLng = 2.3522;
+    
+    setStatus(prev => ({
+      ...prev,
+      location: {
+        lat: parisLat + (Math.random() * 0.0005 - 0.00025),
+        lng: parisLng + (Math.random() * 0.0005 - 0.00025)
+      }
+    }));
+  };
 
   const handleUpdatePhoneNumber = (number: string) => {
     setStatus(prev => ({ ...prev, ownerPhoneNumber: number }));
@@ -423,6 +437,19 @@ export default function App() {
 
       {/* Main Content Area */}
       <div className="max-w-md mx-auto h-screen bg-black/50 relative shadow-2xl overflow-hidden flex flex-col">
+        
+        {/* Debug / Simulation Button */}
+        <div className="absolute top-2 right-2 z-50">
+            <button
+                onClick={simulateGPS}
+                className="bg-black/40 backdrop-blur-md border border-gray-700/50 hover:bg-black/80 hover:border-neon-blue text-xs px-3 py-1.5 rounded-full text-gray-300 hover:text-white transition-all duration-300 flex items-center gap-1.5 group shadow-lg"
+                title="Force GPS Update"
+            >
+                <Satellite size={12} className="text-gray-400 group-hover:text-neon-blue group-hover:animate-pulse" />
+                <span className="text-[10px] font-mono tracking-wider">SIMULATE GPS</span>
+            </button>
+        </div>
+
         {/* Top Gradient Mesh */}
         <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-neon-blue/10 to-transparent pointer-events-none" />
 
