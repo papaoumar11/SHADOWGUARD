@@ -224,7 +224,6 @@ const Dashboard: React.FC<DashboardProps> = ({ status, events, onUpdatePhoneNumb
                 <>
                     <Satellite size={24} className="mb-2 text-gray-500 animate-bounce" />
                     <span className="text-lg font-bold text-gray-400 animate-pulse">ACQUIRING...</span>
-                    <span className="text-lg font-bold text-gray-400 animate-pulse">ACQUIRING...</span>
                     <span className="text-[10px] text-gray-600 font-mono uppercase tracking-widest">Searching Satellites</span>
                 </>
             )}
