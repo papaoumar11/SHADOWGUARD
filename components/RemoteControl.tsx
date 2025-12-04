@@ -1,14 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Lock, Camera, Volume2, Trash2, MessageSquare, Check, AlertTriangle, Satellite, Loader2 } from 'lucide-react';
+import { MapPin, Lock, Camera, Volume2, Trash2, MessageSquare, Check, AlertTriangle, Satellite, Loader2, Video, StopCircle } from 'lucide-react';
 
 interface RemoteControlProps {
   onTriggerRemoteCamera: () => void;
   onSendAlert: () => void;
   location: { lat: number; lng: number } | null;
   onRemoteWipe: () => void;
+  onStartRecording: () => void;
+  onStopRecording: () => void;
+  isRecording: boolean;
 }
 
-const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, onSendAlert, location, onRemoteWipe }) => {
+const RemoteControl: React.FC<RemoteControlProps> = ({ 
+    onTriggerRemoteCamera, 
+    onSendAlert, 
+    location, 
+    onRemoteWipe,
+    onStartRecording,
+    onStopRecording,
+    isRecording
+}) => {
   const [activeAction, setActiveAction] = useState<string | null>(null);
   const [successAction, setSuccessAction] = useState<string | null>(null);
   const [showCameraSuccess, setShowCameraSuccess] = useState(false);
@@ -28,23 +39,26 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
         setShowCameraSuccess(true);
       }, 1500);
 
-      // 2. Start Closing Visuals
-      closeStartTimer = setTimeout(() => {
-        setClosingCamera(true);
-      }, 3500);
+      // 2. Start Closing Visuals (ONLY if not recording)
+      // If isRecording is true, we keep the camera open indefinitely until user stops recording
+      if (!isRecording) {
+        closeStartTimer = setTimeout(() => {
+            setClosingCamera(true);
+        }, 3500);
 
-      // 3. Auto-close
-      resetTimer = setTimeout(() => {
-        setActiveAction(null);
-        setShowCameraSuccess(false);
-        setClosingCamera(false);
-      }, 4500);
+        // 3. Auto-close
+        resetTimer = setTimeout(() => {
+            setActiveAction(null);
+            setShowCameraSuccess(false);
+            setClosingCamera(false);
+        }, 4500);
+      }
     } else if (activeAction === 'MESSAGE') {
        // Handled manually in performAction for timing
        resetTimer = setTimeout(() => {
         setActiveAction(null);
        }, 5000);
-    } else if (activeAction) {
+    } else if (activeAction && activeAction !== 'VIDEO_MODE') {
       // For other actions, just auto-close after a delay
       resetTimer = setTimeout(() => {
         setActiveAction(null);
@@ -56,15 +70,37 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
       clearTimeout(closeStartTimer);
       clearTimeout(resetTimer);
     };
-  }, [activeAction]);
+  }, [activeAction, isRecording]);
 
   const performAction = (action: string) => {
-    // Prevent overlapping actions
-    if (activeAction) return;
+    // Prevent overlapping actions unless toggling recording inside camera view
+    if (activeAction && action !== 'VIDEO_TOGGLE') return;
 
     if (action === 'WIPE') {
       setShowWipeConfirm(true);
       return;
+    }
+
+    if (action === 'VIDEO_TOGGLE') {
+        if (isRecording) {
+            onStopRecording();
+            // Allow auto-close to happen after a short delay now that recording stopped
+            setTimeout(() => {
+                setClosingCamera(true);
+                setTimeout(() => {
+                    setActiveAction(null);
+                    setClosingCamera(false);
+                }, 1000);
+            }, 1000);
+        } else {
+            onStartRecording();
+            // Ensure we are in camera visual mode
+            if (activeAction !== 'CAMERA') {
+                 setActiveAction('CAMERA');
+                 setShowCameraSuccess(true); // Skip scanning animation for video mode start
+            }
+        }
+        return;
     }
 
     setActiveAction(action);
@@ -145,7 +181,7 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
       )}
 
       {/* Map / Viewport Area */}
-      <div className="w-full h-48 bg-dark-surface rounded-xl overflow-hidden relative border border-gray-700 group">
+      <div className={`w-full h-48 bg-dark-surface rounded-xl overflow-hidden relative border group transition-colors duration-500 ${isRecording ? 'border-red-600 shadow-[0_0_15px_rgba(255,0,0,0.5)]' : 'border-gray-700'}`}>
         
         {/* Standard Map View - Hidden when Camera is Active */}
         <div className={`absolute inset-0 transition-opacity duration-300 ${activeAction === 'CAMERA' ? 'opacity-0' : 'opacity-100'}`}>
@@ -190,15 +226,15 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
           {/* Cyberpunk Grid Background */}
           <div className="absolute inset-0 bg-[linear-gradient(rgba(0,243,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(0,243,255,0.05)_1px,transparent_1px)] bg-[size:20px_20px]"></div>
           
-          {/* Scanning Line Animation - Only show if not success yet */}
-          {activeAction === 'CAMERA' && !showCameraSuccess && !closingCamera && (
+          {/* Scanning Line Animation - Only show if not success yet and not recording */}
+          {activeAction === 'CAMERA' && !showCameraSuccess && !closingCamera && !isRecording && (
              <div className="absolute top-0 w-full h-full bg-gradient-to-b from-transparent via-neon-green/20 to-transparent animate-scan z-10 pointer-events-none">
                 <div className="absolute bottom-0 w-full h-[2px] bg-neon-green shadow-[0_0_15px_#0aff0a]"></div>
              </div>
           )}
 
-          {/* Success Overlay */}
-          {showCameraSuccess && !closingCamera && (
+          {/* Success Overlay - only show briefly if not recording */}
+          {showCameraSuccess && !closingCamera && !isRecording && (
              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/80 animate-in fade-in zoom-in duration-300">
                 <div className="p-3 bg-neon-green/20 rounded-full border-2 border-neon-green text-neon-green mb-3 shadow-[0_0_20px_rgba(10,255,10,0.3)]">
                    <Check size={32} strokeWidth={3} />
@@ -219,8 +255,16 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
              </div>
           )}
 
-          {/* HUD Focus Brackets - Hide on success */}
-          {!showCameraSuccess && !closingCamera && (
+          {/* RECORDING INDICATOR */}
+          {isRecording && (
+             <div className="absolute top-3 right-3 flex items-center gap-2 z-30">
+                 <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse shadow-[0_0_10px_red]"></div>
+                 <span className="text-red-500 font-mono text-xs font-bold tracking-widest">REC</span>
+             </div>
+          )}
+
+          {/* HUD Focus Brackets - Hide on success unless recording */}
+          {(!showCameraSuccess && !closingCamera) || isRecording ? (
             <div className="relative w-24 h-24 transition-all duration-500 transform scale-100 flex items-center justify-center">
               <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-neon-green"></div>
               <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-neon-green"></div>
@@ -230,27 +274,28 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
               {/* Center Target Dot */}
               <div className="w-1 h-1 bg-neon-red rounded-full animate-ping"></div>
             </div>
-          )}
+          ) : null}
 
-          {/* Status Text Overlay - Hide on success */}
-          {!showCameraSuccess && !closingCamera && (
+          {/* Status Text Overlay - Hide on success unless recording */}
+          {(!showCameraSuccess && !closingCamera) || isRecording ? (
             <>
               <div className="absolute top-3 left-3 flex items-center gap-2">
                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
                  <span className="text-[10px] font-mono text-neon-green tracking-widest">REMOTE_LINK::ESTABLISHED</span>
               </div>
 
-              {/* Added as per user request */}
-              <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-neon-green font-mono text-xs tracking-widest animate-pulse">
-                TARGET ACQUIRED...
+              <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-neon-green font-mono text-xs tracking-widest animate-pulse whitespace-nowrap">
+                {isRecording ? "ENCRYPTING VIDEO STREAM..." : "TARGET ACQUIRED..."}
               </div>
 
               <div className="absolute bottom-3 right-3 text-right">
                  <div className="text-[10px] font-mono text-neon-green opacity-70">ISO 800</div>
-                 <div className="text-[10px] font-mono text-neon-blue animate-pulse tracking-widest">ACQUIRING TARGET...</div>
+                 <div className="text-[10px] font-mono text-neon-blue animate-pulse tracking-widest">
+                     {isRecording ? "UPLOADING CHUNKS..." : "ACQUIRING TARGET..."}
+                 </div>
               </div>
             </>
-          )}
+          ) : null}
         </div>
 
       </div>
@@ -306,6 +351,21 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
         </button>
 
         <button 
+          onClick={() => performAction('VIDEO_TOGGLE')}
+          className={`bg-dark-card p-4 rounded-xl border transition active:scale-95 flex flex-col items-center justify-center gap-2 ${isRecording ? 'border-red-600 bg-red-900/10' : 'border-gray-800 hover:bg-dark-surface'}`}
+        >
+          <div className={`p-3 rounded-full ${isRecording ? 'bg-red-600/20' : 'bg-neon-green/10'}`}>
+            {isRecording ? <StopCircle size={24} className="text-red-600" /> : <Video size={24} className="text-neon-green" />}
+          </div>
+          <span className={`font-medium text-sm ${isRecording ? 'text-red-500 animate-pulse' : 'text-white'}`}>
+             {isRecording ? 'Arrêter Enreg.' : 'Vidéo Surveillance'}
+          </span>
+        </button>
+      </div>
+      
+      {/* SOS Button row */}
+      <div className="grid grid-cols-1">
+        <button 
           onClick={() => performAction('MESSAGE')}
           disabled={isSendingMessage}
           className="bg-dark-card p-4 rounded-xl border border-gray-800 flex flex-col items-center justify-center gap-2 hover:bg-dark-surface transition active:scale-95 group relative overflow-hidden disabled:opacity-80 disabled:cursor-not-allowed"
@@ -355,7 +415,7 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
 
         {activeAction === 'LOCK' && <p className="text-neon-blue">[CMD] Executing REMOTE_LOCK... SUCCESS</p>}
         {activeAction === 'ALARM' && <p className="text-neon-purple">[CMD] Triggering MAX_VOLUME_ALARM... SENT</p>}
-        {activeAction === 'CAMERA' && (
+        {activeAction === 'CAMERA' && !isRecording && (
           <>
             <p className="text-neon-green">[CMD] Requesting FRONT_CAMERA_SNAPSHOT...</p>
             {showCameraSuccess && !closingCamera ? (
@@ -366,6 +426,9 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
               <p className="text-neon-green animate-pulse"> >> UPLOADING EVIDENCE TO CLOUD...</p>
             )}
           </>
+        )}
+        {(activeAction === 'CAMERA' || activeAction === 'VIDEO_TOGGLE') && isRecording && (
+             <p className="text-red-500 font-bold animate-pulse">[REC] VIDEO STREAM RECORDING... UPLOADING BLOCKS...</p>
         )}
         {activeAction === 'MESSAGE' && (
           <>

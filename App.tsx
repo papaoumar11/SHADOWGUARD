@@ -6,7 +6,7 @@ import AntiSpy from './components/AntiSpy';
 import RemoteControl from './components/RemoteControl';
 import Reports from './components/Reports';
 import { AppView, DeviceStatus, SecurityEvent } from './types';
-import { Siren, X, Camera, Smartphone, Eye, MessageSquare, CheckCircle, Satellite, ShieldAlert, AlertTriangle, Lock } from 'lucide-react';
+import { Siren, X, Camera, Smartphone, Eye, MessageSquare, CheckCircle, Satellite, ShieldAlert, AlertTriangle, Lock, Video } from 'lucide-react';
 import { supabase } from './services/supabaseClient';
 
 export default function App() {
@@ -22,7 +22,14 @@ export default function App() {
   
   // Ref for the hidden video element used for capturing frames (canvas drawing)
   const captureVideoRef = useRef<HTMLVideoElement>(null);
-  const [captures, setCaptures] = useState<{ type: 'THIEF' | 'SCREEN', url: string, timestamp: Date }[]>([]);
+  
+  // Recording State
+  const [isRecording, setIsRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+
+  // Evidence State
+  const [captures, setCaptures] = useState<{ type: 'THIEF' | 'SCREEN' | 'VIDEO', url: string, timestamp: Date }[]>([]);
 
   // Mock State
   const [status, setStatus] = useState<DeviceStatus>({
@@ -331,6 +338,68 @@ export default function App() {
     }
   };
 
+  // --- VIDEO RECORDING LOGIC ---
+
+  const handleStartRecording = async () => {
+    if (!cameraStream) {
+        // If camera isn't on, start it first
+        const stream = await startCamera();
+        if (!stream) return;
+        // Small delay to ensure stream is ready
+        setTimeout(() => startRecorder(stream), 500);
+    } else {
+        startRecorder(cameraStream);
+    }
+  };
+
+  const startRecorder = (stream: MediaStream) => {
+    try {
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      recordedChunksRef.current = [];
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        setCaptures(prev => [...prev, { type: 'VIDEO', url: url, timestamp: new Date() }]);
+        handleAddEvent({
+            type: 'SYSTEM',
+            severity: 'MEDIUM',
+            message: 'Enregistrement vidéo de surveillance terminé',
+            timestamp: new Date()
+        });
+      };
+
+      recorder.start();
+      setIsRecording(true);
+      
+      handleAddEvent({
+        type: 'SYSTEM',
+        severity: 'MEDIUM',
+        message: 'Enregistrement vidéo à distance démarré',
+        timestamp: new Date()
+      });
+
+    } catch (error) {
+      console.error("Failed to start MediaRecorder:", error);
+    }
+  };
+
+  const handleStopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      // Optional: Stop camera if it was started just for this (logic depends on UX preference)
+      // For now, we leave camera open to allow multiple actions, managed by RemoteControl
+    }
+  };
+
   const takeThiefPhoto = () => {
     // Use the hidden capture video ref
     if (captureVideoRef.current && captureVideoRef.current.readyState === 4) {
@@ -615,13 +684,20 @@ export default function App() {
             {captures.length > 0 && (
               <div className="flex gap-2 overflow-x-auto pb-2 px-1 snap-x">
                 {captures.map((cap, idx) => (
-                  <div key={idx} className="flex-shrink-0 w-24 h-24 bg-black border-2 border-white/50 rounded-lg overflow-hidden relative snap-center">
-                    <img src={cap.url} alt="Evidence" className="w-full h-full object-cover" />
+                  <div key={idx} className="flex-shrink-0 w-24 h-24 bg-black border-2 border-white/50 rounded-lg overflow-hidden relative snap-center group">
+                    {cap.type === 'VIDEO' ? (
+                        <video src={cap.url} className="w-full h-full object-cover" muted />
+                    ) : (
+                        <img src={cap.url} alt="Evidence" className="w-full h-full object-cover" />
+                    )}
+                    
                     <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-[8px] text-white p-1 text-center truncate">
-                      {cap.type === 'THIEF' ? 'INTRUS' : 'SCREEN'} {cap.timestamp.toLocaleTimeString()}
+                      {cap.type} {cap.timestamp.toLocaleTimeString()}
                     </div>
-                    <div className="absolute top-1 right-1">
-                      {cap.type === 'THIEF' ? <Eye size={12} className="text-neon-red" /> : <Smartphone size={12} className="text-neon-blue" />}
+                    <div className="absolute top-1 right-1 bg-black/50 rounded-full p-1">
+                      {cap.type === 'THIEF' ? <Eye size={10} className="text-neon-red" /> : 
+                       cap.type === 'VIDEO' ? <Video size={10} className="text-neon-green" /> : 
+                       <Smartphone size={10} className="text-neon-blue" />}
                     </div>
                   </div>
                 ))}
@@ -679,6 +755,9 @@ export default function App() {
               onSendAlert={sendEmergencyAlert}
               location={status.location}
               onRemoteWipe={handleSystemTamper}
+              onStartRecording={handleStartRecording}
+              onStopRecording={handleStopRecording}
+              isRecording={isRecording}
             />
           )}
           {currentView === AppView.REPORTS && <Reports />}
