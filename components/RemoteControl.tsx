@@ -12,10 +12,12 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
   const [successAction, setSuccessAction] = useState<string | null>(null);
   const [showCameraSuccess, setShowCameraSuccess] = useState(false);
   const [showWipeConfirm, setShowWipeConfirm] = useState(false);
+  const [closingCamera, setClosingCamera] = useState(false);
 
   // Manage the lifecycle of actions, specifically the Camera Scanning simulation
   useEffect(() => {
     let scanTimer: ReturnType<typeof setTimeout>;
+    let closeStartTimer: ReturnType<typeof setTimeout>;
     let resetTimer: ReturnType<typeof setTimeout>;
 
     if (activeAction === 'CAMERA') {
@@ -25,11 +27,17 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
         setShowCameraSuccess(true);
       }, 1500);
 
-      // 2. Auto-close after showing success for a while
+      // 2. Start Closing Visuals (after success has been visible for ~2s)
+      closeStartTimer = setTimeout(() => {
+        setClosingCamera(true);
+      }, 3500);
+
+      // 3. Auto-close and reset everything
       resetTimer = setTimeout(() => {
         setActiveAction(null);
         setShowCameraSuccess(false);
-      }, 3500);
+        setClosingCamera(false);
+      }, 4500);
     } else if (activeAction) {
       // For other actions, just auto-close after a delay
       resetTimer = setTimeout(() => {
@@ -39,6 +47,7 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
 
     return () => {
       clearTimeout(scanTimer);
+      clearTimeout(closeStartTimer);
       clearTimeout(resetTimer);
     };
   }, [activeAction]);
@@ -54,6 +63,7 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
 
     setActiveAction(action);
     setShowCameraSuccess(false);
+    setClosingCamera(false);
 
     // Show temporary success feedback for immediate commands
     if (['LOCK', 'ALARM', 'MESSAGE'].includes(action)) {
@@ -162,14 +172,14 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
           <div className="absolute inset-0 bg-[linear-gradient(rgba(0,243,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(0,243,255,0.05)_1px,transparent_1px)] bg-[size:20px_20px]"></div>
           
           {/* Scanning Line Animation - Only show if not success yet */}
-          {activeAction === 'CAMERA' && !showCameraSuccess && (
+          {activeAction === 'CAMERA' && !showCameraSuccess && !closingCamera && (
              <div className="absolute top-0 w-full h-full bg-gradient-to-b from-transparent via-neon-green/20 to-transparent animate-scan z-10 pointer-events-none">
                 <div className="absolute bottom-0 w-full h-[2px] bg-neon-green shadow-[0_0_15px_#0aff0a]"></div>
              </div>
           )}
 
           {/* Success Overlay */}
-          {showCameraSuccess && (
+          {showCameraSuccess && !closingCamera && (
              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/80 animate-in fade-in zoom-in duration-300">
                 <div className="p-3 bg-neon-green/20 rounded-full border-2 border-neon-green text-neon-green mb-3 shadow-[0_0_20px_rgba(10,255,10,0.3)]">
                    <Check size={32} strokeWidth={3} />
@@ -179,8 +189,19 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
              </div>
           )}
 
+          {/* Closing/Termination Overlay */}
+          {closingCamera && (
+             <div className="absolute inset-0 bg-black z-30 flex items-center justify-center animate-in fade-in duration-200">
+                 <div className="w-full h-[1px] bg-neon-red absolute top-1/2 transform -translate-y-1/2 animate-[ping_0.5s_ease-in-out]"></div>
+                 <div className="flex flex-col items-center gap-1 z-10 bg-black px-4 py-1">
+                    <span className="text-neon-red font-mono text-xs tracking-[0.2em]">FEED TERMINATED</span>
+                    <span className="text-[8px] text-gray-500 font-mono tracking-widest">SECURE DISCONNECT</span>
+                 </div>
+             </div>
+          )}
+
           {/* HUD Focus Brackets - Hide on success */}
-          {!showCameraSuccess && (
+          {!showCameraSuccess && !closingCamera && (
             <div className="relative w-24 h-24 transition-all duration-500 transform scale-100 flex items-center justify-center">
               <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-neon-green"></div>
               <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-neon-green"></div>
@@ -193,7 +214,7 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
           )}
 
           {/* Status Text Overlay - Hide on success */}
-          {!showCameraSuccess && (
+          {!showCameraSuccess && !closingCamera && (
             <>
               <div className="absolute top-3 left-3 flex items-center gap-2">
                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
@@ -312,8 +333,10 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
         {activeAction === 'CAMERA' && (
           <>
             <p className="text-neon-green">[CMD] Requesting FRONT_CAMERA_SNAPSHOT...</p>
-            {showCameraSuccess ? (
+            {showCameraSuccess && !closingCamera ? (
               <p className="text-neon-green font-bold"> >> SUCCESS: IMAGE UPLOADED [ID:7382]</p>
+            ) : closingCamera ? (
+              <p className="text-neon-red"> >> CONNECTION TERMINATED</p>
             ) : (
               <p className="text-neon-green animate-pulse"> >> UPLOADING EVIDENCE TO CLOUD...</p>
             )}
