@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, ShieldAlert, Battery, Wifi, Activity, Phone, Edit2, Check, Users, User, X, Search } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, Battery, Wifi, Activity, Phone, Edit2, Check, Users, User, X, Search, Satellite } from 'lucide-react';
 import { DeviceStatus, SecurityEvent } from '../types';
 
 interface DashboardProps {
@@ -22,6 +22,7 @@ const Dashboard: React.FC<DashboardProps> = ({ status, events, onUpdatePhoneNumb
   const [tempPhone, setTempPhone] = useState(status.ownerPhoneNumber);
   const [showContactPicker, setShowContactPicker] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [inputError, setInputError] = useState(false);
 
   // Rotate the shield slowly
   useEffect(() => {
@@ -32,12 +33,18 @@ const Dashboard: React.FC<DashboardProps> = ({ status, events, onUpdatePhoneNumb
   }, []);
 
   const handleSavePhone = () => {
+    if (!tempPhone.trim()) {
+        setInputError(true);
+        return;
+    }
+    setInputError(false);
     onUpdatePhoneNumber(tempPhone);
     setIsEditingPhone(false);
   };
 
   const handleSelectContact = (number: string) => {
     setTempPhone(number);
+    setInputError(false);
     setShowContactPicker(false);
   };
 
@@ -89,6 +96,7 @@ const Dashboard: React.FC<DashboardProps> = ({ status, events, onUpdatePhoneNumb
             <span className="font-bold text-sm">Contact d'Urgence</span>
           </div>
           <button 
+            type="button"
             onClick={() => isEditingPhone ? handleSavePhone() : setIsEditingPhone(true)}
             className="text-xs text-neon-blue hover:text-white transition"
           >
@@ -97,23 +105,29 @@ const Dashboard: React.FC<DashboardProps> = ({ status, events, onUpdatePhoneNumb
         </div>
         
         {isEditingPhone ? (
-          <div className="flex gap-2">
-            <input 
-              type="tel" 
-              value={tempPhone}
-              onChange={(e) => setTempPhone(e.target.value)}
-              className="flex-1 bg-black/50 border border-neon-blue/50 rounded px-3 py-2 text-white outline-none focus:border-neon-blue"
-              placeholder="+33 6..."
-              autoFocus
-            />
-            <button 
-              type="button"
-              onClick={openContactPicker}
-              className="bg-gray-800 hover:bg-gray-700 text-neon-blue px-3 rounded border border-gray-700 flex items-center justify-center transition"
-              title="Choisir un contact"
-            >
-              <Users size={18} />
-            </button>
+          <div className="flex flex-col gap-1">
+            <div className="flex gap-2">
+                <input 
+                type="tel" 
+                value={tempPhone}
+                onChange={(e) => {
+                    setTempPhone(e.target.value);
+                    if(e.target.value.trim()) setInputError(false);
+                }}
+                className={`flex-1 bg-black/50 border rounded px-3 py-2 text-white outline-none focus:border-neon-blue ${inputError ? 'border-neon-red' : 'border-neon-blue/50'}`}
+                placeholder="+33 6..."
+                autoFocus
+                />
+                <button 
+                type="button"
+                onClick={openContactPicker}
+                className="bg-gray-800 hover:bg-gray-700 text-neon-blue px-3 rounded border border-gray-700 flex items-center justify-center transition"
+                title="Choisir un contact"
+                >
+                <Users size={18} />
+                </button>
+            </div>
+            {inputError && <span className="text-[10px] text-neon-red">Phone number cannot be empty</span>}
           </div>
         ) : (
           <div className="flex justify-between items-center bg-black/30 p-2 rounded">
@@ -133,7 +147,7 @@ const Dashboard: React.FC<DashboardProps> = ({ status, events, onUpdatePhoneNumb
                 <Users size={14} className="text-neon-blue" />
                 Sélectionner
               </span>
-              <button onClick={() => setShowContactPicker(false)} className="text-gray-400 hover:text-white">
+              <button type="button" onClick={() => setShowContactPicker(false)} className="text-gray-400 hover:text-white">
                 <X size={18} />
               </button>
             </div>
@@ -159,6 +173,7 @@ const Dashboard: React.FC<DashboardProps> = ({ status, events, onUpdatePhoneNumb
               ) : (
                   filteredContacts.map((contact, idx) => (
                     <button 
+                      type="button"
                       key={idx}
                       onClick={() => handleSelectContact(contact.number)}
                       className="w-full flex items-center gap-3 p-2 rounded hover:bg-white/5 transition border border-transparent hover:border-gray-800 text-left group"
@@ -185,10 +200,33 @@ const Dashboard: React.FC<DashboardProps> = ({ status, events, onUpdatePhoneNumb
           <span className="text-2xl font-bold">{status.batteryLevel}%</span>
           <span className="text-xs text-gray-500">Batterie</span>
         </div>
-        <div className="bg-dark-card p-4 rounded-xl border border-gray-800 flex flex-col items-center justify-center shadow-lg backdrop-blur-md bg-opacity-80">
-          <Wifi className="mb-2 text-neon-blue" />
-          <span className="text-2xl font-bold">Sécurisé</span>
-          <span className="text-xs text-gray-500">Réseau</span>
+        
+        <div className="bg-dark-card p-4 rounded-xl border border-gray-800 flex flex-col items-center justify-center shadow-lg backdrop-blur-md bg-opacity-80 relative overflow-hidden group">
+            {/* Active Satellite Background Animation */}
+            <div className="absolute inset-0 opacity-10 pointer-events-none">
+                {status.location ? (
+                    <div className="w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-neon-blue to-transparent"></div>
+                ) : (
+                    <div className="w-[200%] h-[200%] absolute -top-1/2 -left-1/2 bg-[conic-gradient(from_0deg,transparent_0_340deg,white_360deg)] animate-spin opacity-20"></div>
+                )}
+            </div>
+            
+            {status.location ? (
+                <>
+                    <div className="relative mb-2">
+                        <Satellite size={24} className="text-neon-blue relative z-10" />
+                        <div className="absolute inset-0 bg-neon-blue blur-md opacity-50 animate-pulse"></div>
+                    </div>
+                    <span className="text-xl font-bold text-white tracking-wide">SAT LINKED</span>
+                    <span className="text-[10px] text-neon-blue font-mono uppercase tracking-widest">Global Positioning</span>
+                </>
+            ) : (
+                <>
+                    <Satellite size={24} className="mb-2 text-gray-500 animate-bounce" />
+                    <span className="text-lg font-bold text-gray-400 animate-pulse">ACQUIRING...</span>
+                    <span className="text-[10px] text-gray-600 font-mono uppercase tracking-widest">Searching Satellites</span>
+                </>
+            )}
         </div>
       </div>
 

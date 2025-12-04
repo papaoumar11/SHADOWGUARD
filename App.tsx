@@ -24,7 +24,7 @@ export default function App() {
     isCharging: false,
     isProtected: true,
     lastScan: new Date(),
-    location: { lat: 48.8566, lng: 2.3522 },
+    location: null, // Start with null, will update with real GPS
     ownerPhoneNumber: "+33 6 12 34 56 78" // Default mock number
   });
 
@@ -45,6 +45,54 @@ export default function App() {
     }
   ]);
 
+  // Real-time Geolocation Implementation
+  useEffect(() => {
+    let watchId: number;
+
+    if ('geolocation' in navigator) {
+      // 1. Get initial position quickly
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setStatus(prev => ({
+            ...prev,
+            location: {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude
+            }
+          }));
+        },
+        (error) => console.warn("Initial GPS fetch failed:", error)
+      );
+
+      // 2. Watch for updates (simulating satellite tracking)
+      watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          setStatus(prev => ({
+            ...prev,
+            location: {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude
+            }
+          }));
+        },
+        (error) => {
+           console.error("GPS Watch Error:", error);
+        },
+        {
+          enableHighAccuracy: true,
+          maximumAge: 0,
+          timeout: 5000
+        }
+      );
+    } else {
+      console.warn("Geolocation not supported by this browser.");
+    }
+
+    return () => {
+      if (watchId) navigator.geolocation.clearWatch(watchId);
+    };
+  }, []);
+
   const handleUpdatePhoneNumber = (number: string) => {
     setStatus(prev => ({ ...prev, ownerPhoneNumber: number }));
     setEvents(prev => [{
@@ -64,14 +112,21 @@ export default function App() {
     }
 
     setSmsSent(true);
+    
+    // Construct GPS string
+    const locString = status.location 
+        ? `${status.location.lat.toFixed(5)}, ${status.location.lng.toFixed(5)}` 
+        : "Recherche Satellite...";
+
     setEvents(prev => [{
       id: Date.now().toString(),
       type: 'MESSAGE',
       severity: 'HIGH',
-      message: `SMS d'urgence envoyé au ${status.ownerPhoneNumber}`,
+      message: `SMS d'urgence envoyé au ${status.ownerPhoneNumber} [GPS: ${locString}]`,
       timestamp: new Date()
     }, ...prev]);
-    console.log(`Sending SMS to ${status.ownerPhoneNumber}: ALERT! Phone Stolen. Location: ${status.location?.lat}, ${status.location?.lng}`);
+    
+    console.log(`Sending SMS to ${status.ownerPhoneNumber}: ALERT! Phone Stolen. GPS: ${locString}`);
   };
 
   // Alarm Sound Effect (Oscillator)
@@ -390,6 +445,7 @@ export default function App() {
             <RemoteControl 
               onTriggerRemoteCamera={triggerRemoteCamera} 
               onSendAlert={sendEmergencyAlert}
+              location={status.location}
             />
           )}
           {currentView === AppView.REPORTS && <Reports />}

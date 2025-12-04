@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Lock, Camera, Volume2, Trash2, MessageSquare, Check, AlertTriangle } from 'lucide-react';
+import { MapPin, Lock, Camera, Volume2, Trash2, MessageSquare, Check, AlertTriangle, Satellite } from 'lucide-react';
 
 interface RemoteControlProps {
   onTriggerRemoteCamera: () => void;
   onSendAlert: () => void;
+  location: { lat: number; lng: number } | null;
 }
 
-const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, onSendAlert }) => {
+const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, onSendAlert, location }) => {
   const [activeAction, setActiveAction] = useState<string | null>(null);
   const [successAction, setSuccessAction] = useState<string | null>(null);
   const [showCameraSuccess, setShowCameraSuccess] = useState(false);
@@ -81,7 +82,7 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
 
       {/* Wipe Confirmation Modal */}
       {showWipeConfirm && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in duration-200 rounded-xl">
+        <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in duration-200 rounded-xl">
             <div className="bg-dark-card border border-neon-red p-6 rounded-xl shadow-[0_0_50px_rgba(255,0,60,0.2)] max-w-sm w-full text-center relative overflow-hidden">
                 {/* Background warning stripes */}
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-neon-red to-transparent"></div>
@@ -120,13 +121,37 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
         {/* Standard Map View - Hidden when Camera is Active */}
         <div className={`absolute inset-0 transition-opacity duration-300 ${activeAction === 'CAMERA' ? 'opacity-0' : 'opacity-100'}`}>
           <div className="absolute inset-0 bg-[url('https://picsum.photos/600/300')] bg-cover bg-center opacity-50 grayscale group-hover:grayscale-0 transition-all duration-500"></div>
+          
+          {/* Target Reticle */}
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-4 h-4 bg-neon-blue rounded-full shadow-[0_0_15px_#00f3ff] animate-ping absolute"></div>
-            <div className="w-4 h-4 bg-neon-blue rounded-full shadow-[0_0_15px_#00f3ff] relative z-10 border-2 border-white"></div>
+            <div className="w-32 h-32 border border-neon-blue/30 rounded-full flex items-center justify-center animate-[spin_4s_linear_infinite]">
+              <div className="w-2 h-2 bg-neon-blue rounded-full absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2"></div>
+            </div>
+            <div className="absolute w-4 h-4 bg-neon-blue rounded-full shadow-[0_0_15px_#00f3ff] animate-ping"></div>
+            <div className="absolute w-2 h-2 bg-white rounded-full z-10"></div>
           </div>
-          <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur px-2 py-1 rounded text-xs text-white flex items-center gap-1">
-            <MapPin size={12} className="text-neon-blue" />
-            Paris, France (Précision: 5m)
+
+          {/* Satellite Data Overlay */}
+          <div className="absolute top-2 right-2 bg-black/70 backdrop-blur px-2 py-1 rounded border border-gray-700 flex flex-col items-end">
+             <div className="flex items-center gap-2 mb-1">
+                <span className="text-[10px] text-neon-blue font-mono animate-pulse">LIVE SAT</span>
+                <Satellite size={14} className="text-neon-blue" />
+             </div>
+             <div className="text-[10px] text-gray-400 font-mono">
+                {location ? (
+                    <>
+                      LAT: {location.lat.toFixed(4)}<br/>
+                      LNG: {location.lng.toFixed(4)}
+                    </>
+                ) : (
+                    <span className="animate-pulse">ACQUIRING GPS...</span>
+                )}
+             </div>
+          </div>
+
+          <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur px-2 py-1 rounded text-xs text-white flex items-center gap-1 border border-gray-700">
+            <MapPin size={12} className="text-neon-red" />
+            <span>{location ? "Position Traced (High Accuracy)" : "Triangulation..."}</span>
           </div>
         </div>
 
@@ -269,7 +294,14 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
       <div className="flex-1 bg-black rounded-xl p-4 font-mono text-xs text-green-500 overflow-y-auto border border-gray-800">
         <div className="opacity-50 border-b border-gray-800 pb-2 mb-2">SYSTEM LOGS - SECURE CONNECTION</div>
         <p>[10:42:01] Connection established (TLS 1.3)</p>
-        <p>[10:42:05] Location updated: 48.8566° N, 2.3522° E</p>
+        <p>[10:42:05] Initializing GPS subsystems...</p>
+        
+        {location ? (
+             <p className="text-neon-blue">[SAT] GPS LOCKED: {location.lat.toFixed(5)}, {location.lng.toFixed(5)}</p>
+        ) : (
+             <p className="text-yellow-500 animate-pulse">[SAT] SEARCHING FOR SATELLITES...</p>
+        )}
+
         {activeAction === 'LOCK' && <p className="text-neon-blue">[CMD] Executing REMOTE_LOCK... SUCCESS</p>}
         {activeAction === 'ALARM' && <p className="text-neon-purple">[CMD] Triggering MAX_VOLUME_ALARM... SENT</p>}
         {activeAction === 'CAMERA' && (
@@ -285,7 +317,7 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
         {activeAction === 'MESSAGE' && (
           <>
             <p className="text-yellow-500">[CMD] SENDING EMERGENCY SMS TO OWNER...</p>
-            <p className="text-yellow-500"> >> MSG: "DEVICE FOUND AT 48.85 N, 2.35 E"</p>
+            {location && <p className="text-yellow-500"> >> APPENDING GPS DATA: {location.lat.toFixed(4)}, {location.lng.toFixed(4)}</p>}
             <p className="text-neon-green"> >> DELIVERY CONFIRMED</p>
           </>
         )}
