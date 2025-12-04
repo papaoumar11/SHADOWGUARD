@@ -131,7 +131,19 @@ export default function App() {
     if (locked === 'true') {
       setIsSystemLocked(true);
     }
-  }, []);
+
+    // Watch for manual tampering of local storage
+    const handleStorageChange = (e: StorageEvent) => {
+        if (e.key === 'shadowguard_locked' && e.newValue === null) {
+            // Re-apply lock if someone tries to clear it manually
+            if (isSystemLocked) {
+                localStorage.setItem('shadowguard_locked', 'true');
+            }
+        }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [isSystemLocked]);
 
   // Real-time Geolocation Implementation
   useEffect(() => {
@@ -603,9 +615,9 @@ export default function App() {
            
            <ShieldAlert size={80} className="text-neon-red mb-6 animate-pulse" />
            
-           <h1 className="text-4xl font-black text-neon-red tracking-tighter mb-2 text-center">SYSTEM LOCKED</h1>
+           <h1 className="text-4xl font-black text-neon-red tracking-tighter mb-2 text-center">DATA LOCKED</h1>
            <p className="text-white font-mono text-sm mb-8 text-center bg-neon-red/10 border border-neon-red/50 px-4 py-2 rounded">
-             CRITICAL INTEGRITY FAILURE<br/>DATA ENCRYPTED
+             SECURITY VIOLATION DETECTED<br/>ACCESS BLOCKED
            </p>
 
            <div className={`w-full max-w-xs flex flex-col items-center ${unlockError ? 'animate-shake' : ''}`}>
