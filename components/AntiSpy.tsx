@@ -100,7 +100,7 @@ const AntiSpy: React.FC = () => {
             {results.map((app, idx) => (
               <div 
                 key={idx} 
-                className={`p-4 rounded-xl border relative overflow-hidden group transition-all hover:scale-[1.01] ${
+                className={`p-4 rounded-xl border relative overflow-hidden group transition-all hover:scale-[1.01] bg-dark-card ${
                   app.status === 'DANGEROUS' 
                     ? 'border-neon-red/50 bg-gradient-to-br from-neon-red/10 to-transparent hover:border-neon-red' 
                     : app.status === 'WARNING' 
@@ -139,7 +139,7 @@ const AntiSpy: React.FC = () => {
                   
                   <div className="flex flex-wrap gap-2">
                     {app.permissions.map(p => (
-                      <span key={p} className="text-[9px] font-mono bg-black/40 border border-gray-700 px-2 py-1 rounded text-gray-400 uppercase tracking-wide">
+                      <span key={p} className="text-[9px] font-mono bg-dark-surface border border-gray-700 px-2 py-1 rounded text-gray-400 uppercase tracking-wide">
                         {p}
                       </span>
                     ))}

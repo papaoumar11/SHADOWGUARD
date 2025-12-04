@@ -99,7 +99,7 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
                 <div className="flex gap-3">
                     <button 
                         onClick={() => setShowWipeConfirm(false)}
-                        className="flex-1 py-3 rounded-lg border border-gray-700 text-gray-400 hover:text-white hover:bg-gray-800 transition font-medium text-sm"
+                        className="flex-1 py-3 rounded-lg border border-gray-700 text-gray-400 hover:text-white hover:bg-dark-surface transition font-medium text-sm"
                     >
                         Cancel
                     </button>
@@ -116,7 +116,7 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
       )}
 
       {/* Map / Viewport Area */}
-      <div className="w-full h-48 bg-gray-800 rounded-xl overflow-hidden relative border border-gray-700 group">
+      <div className="w-full h-48 bg-dark-surface rounded-xl overflow-hidden relative border border-gray-700 group">
         
         {/* Standard Map View - Hidden when Camera is Active */}
         <div className={`absolute inset-0 transition-opacity duration-300 ${activeAction === 'CAMERA' ? 'opacity-0' : 'opacity-100'}`}>
@@ -200,6 +200,11 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
                  <span className="text-[10px] font-mono text-neon-green tracking-widest">REMOTE_LINK::ESTABLISHED</span>
               </div>
 
+              {/* Added as per user request */}
+              <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-neon-green font-mono text-xs tracking-widest animate-pulse">
+                TARGET ACQUIRED...
+              </div>
+
               <div className="absolute bottom-3 right-3 text-right">
                  <div className="text-[10px] font-mono text-neon-green opacity-70">ISO 800</div>
                  <div className="text-[10px] font-mono text-neon-blue animate-pulse tracking-widest">ACQUIRING TARGET...</div>
@@ -214,10 +219,10 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
       <div className="grid grid-cols-2 gap-4">
         <button 
           onClick={() => performAction('LOCK')}
-          className="bg-dark-card p-4 rounded-xl border border-gray-800 flex flex-col items-center justify-center gap-2 hover:bg-gray-800 transition active:scale-95 relative overflow-hidden"
+          className="bg-dark-card p-4 rounded-xl border border-gray-800 flex flex-col items-center justify-center gap-2 hover:bg-dark-surface transition active:scale-95 relative overflow-hidden"
         >
           {successAction === 'LOCK' ? (
-             <div className="absolute inset-0 bg-gray-800 flex flex-col items-center justify-center animate-in fade-in duration-300">
+             <div className="absolute inset-0 bg-dark-surface flex flex-col items-center justify-center animate-in fade-in duration-300">
                <Check size={24} className="text-neon-blue mb-1" />
                <span className="text-[10px] font-bold text-neon-blue tracking-widest">CMD SENT</span>
              </div>
@@ -233,10 +238,10 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
 
         <button 
           onClick={() => performAction('ALARM')}
-          className="bg-dark-card p-4 rounded-xl border border-gray-800 flex flex-col items-center justify-center gap-2 hover:bg-gray-800 transition active:scale-95 relative overflow-hidden"
+          className="bg-dark-card p-4 rounded-xl border border-gray-800 flex flex-col items-center justify-center gap-2 hover:bg-dark-surface transition active:scale-95 relative overflow-hidden"
         >
           {successAction === 'ALARM' ? (
-             <div className="absolute inset-0 bg-gray-800 flex flex-col items-center justify-center animate-in fade-in duration-300">
+             <div className="absolute inset-0 bg-dark-surface flex flex-col items-center justify-center animate-in fade-in duration-300">
                <Check size={24} className="text-neon-purple mb-1" />
                <span className="text-[10px] font-bold text-neon-purple tracking-widest">ACTIVATED</span>
              </div>
@@ -252,7 +257,7 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
 
         <button 
           onClick={() => performAction('CAMERA')}
-          className="bg-dark-card p-4 rounded-xl border border-gray-800 flex flex-col items-center justify-center gap-2 hover:bg-gray-800 transition active:scale-95"
+          className="bg-dark-card p-4 rounded-xl border border-gray-800 flex flex-col items-center justify-center gap-2 hover:bg-dark-surface transition active:scale-95"
         >
           <div className="p-3 rounded-full bg-neon-green/10">
             <Camera size={24} className="text-neon-green" />
@@ -262,10 +267,10 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
 
         <button 
           onClick={() => performAction('MESSAGE')}
-          className="bg-dark-card p-4 rounded-xl border border-gray-800 flex flex-col items-center justify-center gap-2 hover:bg-gray-800 transition active:scale-95 group relative overflow-hidden"
+          className="bg-dark-card p-4 rounded-xl border border-gray-800 flex flex-col items-center justify-center gap-2 hover:bg-dark-surface transition active:scale-95 group relative overflow-hidden"
         >
           {successAction === 'MESSAGE' ? (
-             <div className="absolute inset-0 bg-gray-800 flex flex-col items-center justify-center animate-in fade-in duration-300">
+             <div className="absolute inset-0 bg-dark-surface flex flex-col items-center justify-center animate-in fade-in duration-300">
                <Check size={24} className="text-yellow-500 mb-1" />
                <span className="text-[10px] font-bold text-yellow-500 tracking-widest">ALERT SENT</span>
              </div>
@@ -283,7 +288,7 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
       <div className="grid grid-cols-1">
         <button 
           onClick={() => performAction('WIPE')}
-          className="bg-dark-card p-3 rounded-xl border border-gray-800 flex items-center justify-center gap-2 hover:bg-gray-800 transition active:scale-95 group"
+          className="bg-dark-card p-3 rounded-xl border border-gray-800 flex items-center justify-center gap-2 hover:bg-dark-surface transition active:scale-95 group"
         >
           <Trash2 size={18} className="text-neon-red" />
           <span className="font-medium text-sm text-neon-red">Effacement Sécurisé</span>

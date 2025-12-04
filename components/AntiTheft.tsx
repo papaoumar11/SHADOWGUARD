@@ -92,7 +92,7 @@ const AntiTheft: React.FC<AntiTheftProps> = ({ onTriggerAlarm, isAlarmActive }) 
           max="10" 
           value={sensitivity} 
           onChange={(e) => setSensitivity(parseInt(e.target.value))}
-          className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-neon-blue"
+          className="w-full h-2 bg-dark-surface rounded-lg appearance-none cursor-pointer accent-neon-blue"
         />
       </div>
 
@@ -122,7 +122,7 @@ const AntiTheft: React.FC<AntiTheftProps> = ({ onTriggerAlarm, isAlarmActive }) 
       {armed && (
         <button 
           onClick={triggerMotionSim}
-          className="w-full py-3 rounded-xl bg-gray-800 text-gray-400 text-xs border border-dashed border-gray-600 hover:bg-gray-700 transition"
+          className="w-full py-3 rounded-xl bg-dark-surface text-gray-400 text-xs border border-dashed border-gray-600 hover:bg-gray-700 transition"
         >
           [DEMO] SIMULER MOUVEMENT
         </button>

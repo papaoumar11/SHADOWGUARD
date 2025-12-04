@@ -63,7 +63,7 @@ const Reports: React.FC = () => {
       </div>
 
       {/* Summary Card */}
-      <div className="bg-gradient-to-r from-dark-card to-gray-900 p-6 rounded-xl border border-gray-800 flex items-center justify-between">
+      <div className="bg-gradient-to-r from-dark-card to-dark-surface p-6 rounded-xl border border-gray-800 flex items-center justify-between">
         <div>
           <p className="text-gray-400 text-xs uppercase tracking-wider mb-1">Score de sécurité</p>
           <p className="text-4xl font-bold text-white">94<span className="text-lg text-gray-500">/100</span></p>

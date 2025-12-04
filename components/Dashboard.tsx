@@ -114,14 +114,14 @@ const Dashboard: React.FC<DashboardProps> = ({ status, events, onUpdatePhoneNumb
                     setTempPhone(e.target.value);
                     if(e.target.value.trim()) setInputError(false);
                 }}
-                className={`flex-1 bg-black/50 border rounded px-3 py-2 text-white outline-none focus:border-neon-blue ${inputError ? 'border-neon-red' : 'border-neon-blue/50'}`}
+                className={`flex-1 bg-dark-surface border rounded px-3 py-2 text-white outline-none focus:border-neon-blue ${inputError ? 'border-neon-red' : 'border-gray-700'}`}
                 placeholder="+33 6..."
                 autoFocus
                 />
                 <button 
                 type="button"
                 onClick={openContactPicker}
-                className="bg-gray-800 hover:bg-gray-700 text-neon-blue px-3 rounded border border-gray-700 flex items-center justify-center transition"
+                className="bg-dark-surface hover:bg-gray-700 text-neon-blue px-3 rounded border border-gray-700 flex items-center justify-center transition"
                 title="Choisir un contact"
                 >
                 <Users size={18} />
@@ -130,7 +130,7 @@ const Dashboard: React.FC<DashboardProps> = ({ status, events, onUpdatePhoneNumb
             {inputError && <span className="text-[10px] text-neon-red">Phone number cannot be empty</span>}
           </div>
         ) : (
-          <div className="flex justify-between items-center bg-black/30 p-2 rounded">
+          <div className="flex justify-between items-center bg-dark-surface p-2 rounded border border-gray-800/50">
              <span className="font-mono text-gray-300">{status.ownerPhoneNumber || "Non configuré"}</span>
              <span className="text-[10px] text-gray-500 uppercase tracking-wider">SMS Alert</span>
           </div>
@@ -142,7 +142,7 @@ const Dashboard: React.FC<DashboardProps> = ({ status, events, onUpdatePhoneNumb
         {/* Simulated Contact Picker Modal */}
         {showContactPicker && (
           <div className="absolute inset-0 bg-dark-card z-20 flex flex-col animate-in slide-in-from-bottom-10 fade-in duration-300">
-            <div className="flex items-center justify-between p-3 border-b border-gray-800 bg-gray-900/50">
+            <div className="flex items-center justify-between p-3 border-b border-gray-800 bg-dark-surface/50">
               <span className="font-bold text-sm text-white flex items-center gap-2">
                 <Users size={14} className="text-neon-blue" />
                 Sélectionner
@@ -161,7 +161,7 @@ const Dashboard: React.FC<DashboardProps> = ({ status, events, onUpdatePhoneNumb
                         placeholder="Rechercher..." 
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-black/40 border border-gray-700 rounded-lg pl-8 pr-2 py-1.5 text-xs text-white outline-none focus:border-neon-blue transition"
+                        className="w-full bg-dark-surface border border-gray-700 rounded-lg pl-8 pr-2 py-1.5 text-xs text-white outline-none focus:border-neon-blue transition"
                         autoFocus
                     />
                 </div>
@@ -176,9 +176,9 @@ const Dashboard: React.FC<DashboardProps> = ({ status, events, onUpdatePhoneNumb
                       type="button"
                       key={idx}
                       onClick={() => handleSelectContact(contact.number)}
-                      className="w-full flex items-center gap-3 p-2 rounded hover:bg-white/5 transition border border-transparent hover:border-gray-800 text-left group"
+                      className="w-full flex items-center gap-3 p-2 rounded hover:bg-dark-surface transition border border-transparent hover:border-gray-800 text-left group"
                     >
-                      <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center text-gray-400 group-hover:text-neon-blue group-hover:bg-neon-blue/10 transition">
+                      <div className="w-8 h-8 rounded-full bg-dark-surface flex items-center justify-center text-gray-400 group-hover:text-neon-blue group-hover:bg-neon-blue/10 transition">
                         <User size={14} />
                       </div>
                       <div>
@@ -224,6 +224,7 @@ const Dashboard: React.FC<DashboardProps> = ({ status, events, onUpdatePhoneNumb
                 <>
                     <Satellite size={24} className="mb-2 text-gray-500 animate-bounce" />
                     <span className="text-lg font-bold text-gray-400 animate-pulse">ACQUIRING...</span>
+                    <span className="text-lg font-bold text-gray-400 animate-pulse">ACQUIRING...</span>
                     <span className="text-[10px] text-gray-600 font-mono uppercase tracking-widest">Searching Satellites</span>
                 </>
             )}
@@ -244,7 +245,7 @@ const Dashboard: React.FC<DashboardProps> = ({ status, events, onUpdatePhoneNumb
             <p className="text-gray-500 text-sm text-center py-4">Aucune menace détectée.</p>
           ) : (
             events.slice(0, 3).map(event => (
-              <div key={event.id} className="flex items-start gap-3 p-3 rounded-lg bg-dark-bg/50 border border-gray-800/50">
+              <div key={event.id} className="flex items-start gap-3 p-3 rounded-lg bg-dark-surface/30 border border-gray-800/50">
                 <div className={`mt-1 w-2 h-2 rounded-full ${
                   event.severity === 'CRITICAL' ? 'bg-neon-red shadow-[0_0_8px_#ff003c]' : 
                   event.severity === 'HIGH' ? 'bg-orange-500' : 
