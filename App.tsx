@@ -6,13 +6,18 @@ import AntiSpy from './components/AntiSpy';
 import RemoteControl from './components/RemoteControl';
 import Reports from './components/Reports';
 import { AppView, DeviceStatus, SecurityEvent } from './types';
-import { Siren, X, Camera, Smartphone, Eye, MessageSquare, CheckCircle, Satellite } from 'lucide-react';
+import { Siren, X, Camera, Smartphone, Eye, MessageSquare, CheckCircle, Satellite, ShieldAlert, AlertTriangle, Lock } from 'lucide-react';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<AppView>(AppView.DASHBOARD);
   const [isAlarmActive, setIsAlarmActive] = useState(false);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [smsSent, setSmsSent] = useState(false);
+  
+  // System Lockdown State
+  const [isSystemLocked, setIsSystemLocked] = useState(false);
+  const [unlockPin, setUnlockPin] = useState("");
+  const [unlockError, setUnlockError] = useState(false);
   
   // Ref for the hidden video element used for capturing frames (canvas drawing)
   const captureVideoRef = useRef<HTMLVideoElement>(null);
@@ -44,6 +49,14 @@ export default function App() {
       timestamp: new Date(Date.now() - 1000 * 60 * 120)
     }
   ]);
+
+  // Check for existing lockdown on mount (Persistence)
+  useEffect(() => {
+    const locked = localStorage.getItem('shadowguard_locked');
+    if (locked === 'true') {
+      setIsSystemLocked(true);
+    }
+  }, []);
 
   // Real-time Geolocation Implementation
   useEffect(() => {
@@ -142,6 +155,41 @@ export default function App() {
     }, ...prev]);
     
     console.log(`Sending SMS to ${status.ownerPhoneNumber}: ALERT! Phone Stolen. GPS: ${locString}`);
+  };
+
+  // Logic to trigger system lockdown (Tamper or Wipe)
+  const handleSystemTamper = () => {
+    setIsSystemLocked(true);
+    localStorage.setItem('shadowguard_locked', 'true');
+    console.warn("SYSTEM LOCKDOWN INITIATED: Integrity Violation");
+  };
+
+  // Logic to unlock system
+  const handleUnlockSystem = (pin: string) => {
+    if (unlockPin.length < 4) {
+        const newPin = unlockPin + pin;
+        setUnlockPin(newPin);
+        if (newPin.length === 4) {
+            if (newPin === '1234') { // Hardcoded Master PIN
+                setIsSystemLocked(false);
+                setUnlockPin("");
+                localStorage.removeItem('shadowguard_locked');
+                setEvents(prev => [{
+                  id: Date.now().toString(),
+                  type: 'SYSTEM',
+                  severity: 'HIGH',
+                  message: 'Système restauré après verrouillage de sécurité',
+                  timestamp: new Date()
+                }, ...prev]);
+            } else {
+                setUnlockError(true);
+                setTimeout(() => {
+                    setUnlockPin("");
+                    setUnlockError(false);
+                }, 500);
+            }
+        }
+    }
   };
 
   // Alarm Sound Effect (Oscillator)
@@ -386,6 +434,61 @@ export default function App() {
         className="fixed top-0 left-0 w-1 h-1 opacity-0 pointer-events-none" 
       />
 
+      {/* SYSTEM LOCKDOWN OVERLAY (High Z-Index) */}
+      {isSystemLocked && (
+        <div className="fixed inset-0 z-[200] bg-black flex flex-col items-center justify-center p-6 animate-in fade-in duration-300">
+           {/* Background Stripes */}
+           <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,#ff003c10_10px,#ff003c10_20px)] pointer-events-none"></div>
+           
+           <ShieldAlert size={80} className="text-neon-red mb-6 animate-pulse" />
+           
+           <h1 className="text-4xl font-black text-neon-red tracking-tighter mb-2 text-center">SYSTEM LOCKED</h1>
+           <p className="text-white font-mono text-sm mb-8 text-center bg-neon-red/10 border border-neon-red/50 px-4 py-2 rounded">
+             CRITICAL INTEGRITY FAILURE<br/>DATA ENCRYPTED
+           </p>
+
+           <div className={`w-full max-w-xs flex flex-col items-center ${unlockError ? 'animate-shake' : ''}`}>
+              {/* PIN Dots */}
+              <div className="flex gap-4 mb-8">
+                 {[0, 1, 2, 3].map(i => (
+                    <div key={i} className={`w-4 h-4 rounded-full border border-neon-red transition-all ${i < unlockPin.length ? 'bg-neon-red shadow-[0_0_10px_#ff003c]' : 'bg-transparent'}`} />
+                 ))}
+              </div>
+              
+              {unlockError && <p className="text-neon-red font-bold font-mono text-xs mb-4">ACCESS DENIED</p>}
+
+              {/* Keypad */}
+              <div className="grid grid-cols-3 gap-6 w-full">
+                 {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
+                    <button 
+                      key={num}
+                      onClick={() => handleUnlockSystem(num.toString())}
+                      className="w-16 h-16 rounded-full border border-gray-700 bg-dark-card hover:bg-neon-red/20 hover:border-neon-red flex items-center justify-center text-xl font-bold text-white transition active:scale-95 mx-auto"
+                    >
+                       {num}
+                    </button>
+                 ))}
+                 <div />
+                 <button 
+                      onClick={() => handleUnlockSystem('0')}
+                      className="w-16 h-16 rounded-full border border-gray-700 bg-dark-card hover:bg-neon-red/20 hover:border-neon-red flex items-center justify-center text-xl font-bold text-white transition active:scale-95 mx-auto"
+                    >
+                       0
+                 </button>
+                 <div />
+              </div>
+           </div>
+           
+           <div className="mt-12 text-center opacity-50">
+             <div className="flex items-center gap-2 justify-center text-xs text-gray-500 font-mono mb-1">
+               <Lock size={12} />
+               <span>SECURE BOOT PROTOCOL</span>
+             </div>
+             <p className="text-[10px] text-gray-600">Contact administrator for recovery key.</p>
+           </div>
+        </div>
+      )}
+
       {/* Alarm Overlay */}
       {isAlarmActive && (
         <div className="fixed inset-0 z-[100] bg-neon-red flex flex-col items-center justify-center animate-pulse-fast p-4">
@@ -467,6 +570,7 @@ export default function App() {
               status={status} 
               events={events} 
               onUpdatePhoneNumber={handleUpdatePhoneNumber}
+              onSimulateTamper={handleSystemTamper}
             />
           )}
           {currentView === AppView.ANTI_THEFT && (
@@ -481,6 +585,7 @@ export default function App() {
               onTriggerRemoteCamera={triggerRemoteCamera} 
               onSendAlert={sendEmergencyAlert}
               location={status.location}
+              onRemoteWipe={handleSystemTamper}
             />
           )}
           {currentView === AppView.REPORTS && <Reports />}

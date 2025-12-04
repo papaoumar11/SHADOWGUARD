@@ -5,9 +5,10 @@ interface RemoteControlProps {
   onTriggerRemoteCamera: () => void;
   onSendAlert: () => void;
   location: { lat: number; lng: number } | null;
+  onRemoteWipe: () => void;
 }
 
-const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, onSendAlert, location }) => {
+const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, onSendAlert, location, onRemoteWipe }) => {
   const [activeAction, setActiveAction] = useState<string | null>(null);
   const [successAction, setSuccessAction] = useState<string | null>(null);
   const [showCameraSuccess, setShowCameraSuccess] = useState(false);
@@ -81,6 +82,8 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
   const confirmWipe = () => {
     setActiveAction('WIPE');
     setShowWipeConfirm(false);
+    // Execute the actual wipe/lockdown logic passed from App
+    onRemoteWipe();
   };
 
   return (

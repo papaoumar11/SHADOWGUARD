@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, ShieldAlert, Battery, Wifi, Activity, Phone, Edit2, Check, Users, User, X, Search, Satellite } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, Battery, Wifi, Activity, Phone, Edit2, Check, Users, User, X, Search, Satellite, Skull, AlertTriangle } from 'lucide-react';
 import { DeviceStatus, SecurityEvent } from '../types';
 
 interface DashboardProps {
   status: DeviceStatus;
   events: SecurityEvent[];
   onUpdatePhoneNumber: (number: string) => void;
+  onSimulateTamper: () => void;
 }
 
 const MOCK_CONTACTS = [
@@ -16,7 +17,7 @@ const MOCK_CONTACTS = [
   { name: "S.O.S Urgence", number: "112" }
 ];
 
-const Dashboard: React.FC<DashboardProps> = ({ status, events, onUpdatePhoneNumber }) => {
+const Dashboard: React.FC<DashboardProps> = ({ status, events, onUpdatePhoneNumber, onSimulateTamper }) => {
   const [rotation, setRotation] = useState(0);
   const [isEditingPhone, setIsEditingPhone] = useState(false);
   const [tempPhone, setTempPhone] = useState(status.ownerPhoneNumber);
@@ -258,6 +259,24 @@ const Dashboard: React.FC<DashboardProps> = ({ status, events, onUpdatePhoneNumb
             ))
           )}
         </div>
+      </div>
+
+      {/* Security Sandbox (Simulate Data Tamper) */}
+      <div className="bg-gradient-to-br from-dark-card to-red-950/20 rounded-xl border border-red-900/50 p-4 shadow-lg">
+        <div className="flex items-center gap-2 mb-2 text-neon-red">
+          <Skull size={18} />
+          <h3 className="font-bold text-sm">Zone de Danger (Test)</h3>
+        </div>
+        <p className="text-[10px] text-gray-400 mb-3">
+          Testez la résilience du système face à une altération des données ou une réinitialisation forcée.
+        </p>
+        <button 
+          onClick={onSimulateTamper}
+          className="w-full py-2 bg-red-900/20 hover:bg-neon-red hover:text-black text-neon-red text-xs font-bold rounded border border-neon-red/50 transition-all flex items-center justify-center gap-2"
+        >
+          <AlertTriangle size={14} />
+          SIMULER ALTÉRATION DONNÉES
+        </button>
       </div>
     </div>
   );
