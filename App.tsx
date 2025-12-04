@@ -95,8 +95,11 @@ export default function App() {
       canvas.height = captureVideoRef.current.videoHeight;
       const ctx = canvas.getContext('2d');
       if (ctx) {
-        // Draw the current video frame
+        // Draw the current video frame mirrored to match preview
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
         ctx.drawImage(captureVideoRef.current, 0, 0, canvas.width, canvas.height);
+        
         const dataUrl = canvas.toDataURL('image/jpeg');
         setCaptures(prev => {
           // Avoid duplicates if interval triggers multiple times too fast
@@ -113,43 +116,89 @@ export default function App() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     const ctx = canvas.getContext('2d');
+    
     if (ctx) {
-      // Create a dark "UI" background look
+      // 1. Draw Background
       ctx.fillStyle = '#050505';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      
-      // Add text/elements to simulate the App UI
+
+      // 2. Draw Simulated Navbar/Header
       ctx.fillStyle = '#121212';
-      ctx.fillRect(20, 20, canvas.width - 40, canvas.height - 40);
+      ctx.fillRect(0, 0, canvas.width, 60);
       
-      ctx.font = 'bold 20px monospace';
-      ctx.fillStyle = '#ff003c';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'center';
-      ctx.fillText('⚠️ INTRUSION DETECTED ⚠️', canvas.width / 2, canvas.height / 2);
-      ctx.font = '14px monospace';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`SHADOWGUARD • ${currentView}`, canvas.width / 2, 30);
+
+      // 3. Draw Contextual Content
+      ctx.fillStyle = '#1e1e1e';
+      ctx.fillRect(20, 80, canvas.width - 40, canvas.height - 160);
+
+      const centerX = canvas.width / 2;
+      const centerY = (canvas.height) / 2;
+
+      // Draw Icon based on view
+      ctx.font = '60px sans-serif';
+      if (currentView === AppView.ANTI_THEFT) {
+        ctx.fillStyle = '#ff003c';
+        ctx.fillText('🔒', centerX, centerY - 20);
+        ctx.font = '20px sans-serif';
+        ctx.fillText('MOTION DETECTED', centerX, centerY + 40);
+      } else if (currentView === AppView.ANTI_SPY) {
+        ctx.fillStyle = '#00f3ff';
+        ctx.fillText('🛡️', centerX, centerY - 20);
+        ctx.font = '20px sans-serif';
+        ctx.fillStyle = '#fff';
+        ctx.fillText('SCAN COMPLETE', centerX, centerY + 40);
+      } else {
+        ctx.fillStyle = '#888';
+        ctx.fillText('📱', centerX, centerY - 20);
+        ctx.font = '20px sans-serif';
+        ctx.fillStyle = '#fff';
+        ctx.fillText('SYSTEM OK', centerX, centerY + 40);
+      }
+
+      // 4. Alarm Overlay Simulation (if active)
+      // Since isAlarmActive is likely true when this is called during alarm, draw the red overlay look
+      if (isAlarmActive) {
+        ctx.fillStyle = 'rgba(255, 0, 60, 0.4)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.strokeStyle = '#ff003c';
+        ctx.lineWidth = 8;
+        ctx.strokeRect(0, 0, canvas.width, canvas.height);
+
+        ctx.font = 'bold 32px sans-serif';
+        ctx.fillStyle = '#fff';
+        ctx.shadowColor = 'black';
+        ctx.shadowBlur = 10;
+        ctx.fillText('⚠️ ALARM ⚠️', centerX, centerY - 80);
+        ctx.shadowBlur = 0;
+      }
+
+      // 5. Metadata
+      ctx.font = '12px monospace';
       ctx.fillStyle = '#00f3ff';
-      ctx.fillText(`Timestamp: ${new Date().toLocaleTimeString()}`, canvas.width / 2, canvas.height / 2 + 30);
+      ctx.textAlign = 'right';
+      ctx.fillText(`EVIDENCE: ${new Date().toLocaleTimeString()}`, canvas.width - 15, canvas.height - 15);
 
       const dataUrl = canvas.toDataURL('image/png');
       setCaptures(prev => {
-         if (prev.some(c => c.type === 'SCREEN')) return prev; // One screenshot per alarm session usually enough
+         if (prev.some(c => c.type === 'SCREEN')) return prev; 
          return [...prev, { type: 'SCREEN', url: dataUrl, timestamp: new Date() }];
       });
     }
   };
 
   const triggerRemoteCamera = async () => {
-    // 1. Start Camera (hidden)
     const stream = await startCamera();
     if (!stream) return;
 
-    // 2. Wait a moment for camera to adjust exposure (simulated by timeout)
-    // In a real app, we might wait for the 'playing' event on the video ref.
     setTimeout(() => {
-      // 3. Capture
       takeThiefPhoto();
       
-      // 4. Log the event
       setEvents(prev => [{
         id: Date.now().toString(),
         type: 'SYSTEM',
@@ -158,7 +207,6 @@ export default function App() {
         timestamp: new Date()
       }, ...prev]);
 
-      // 5. Stop camera
       stopCamera();
     }, 1500);
   };
@@ -169,22 +217,19 @@ export default function App() {
 
     if (isAlarmActive) {
       interval = setInterval(playAlarm, 600);
-      // Start camera for alarm evidence
       startCamera();
 
-      // Schedule evidence capture
       // Take a photo every 2 seconds
       photoInterval = setInterval(() => {
         takeThiefPhoto();
       }, 2000);
 
-      // Take a screenshot immediately (after a small delay for render)
+      // Take a screenshot shortly after alarm trigger
       setTimeout(() => {
         takeScreenshot();
-      }, 1500);
+      }, 500); // Reduced delay to capture faster
 
     } else {
-      // If alarm stops, we stop the camera (unless remote control is using it, but simpler to just stop)
       stopCamera();
     }
     return () => {
@@ -195,9 +240,8 @@ export default function App() {
   }, [isAlarmActive]);
 
   const triggerAlarm = () => {
-    setCaptures([]); // Reset previous captures
+    setCaptures([]); 
     setIsAlarmActive(true);
-    // Add event log
     const newEvent: SecurityEvent = {
       id: Date.now().toString(),
       type: 'INTRUSION',
@@ -217,7 +261,7 @@ export default function App() {
   return (
     <div className="bg-dark-bg min-h-screen text-white font-sans overflow-hidden selection:bg-neon-blue selection:text-black">
       
-      {/* Hidden Video for Captures (Always mounted to handle logic) */}
+      {/* Hidden Video for Captures */}
       <video 
         ref={captureVideoRef} 
         autoPlay 
@@ -233,9 +277,8 @@ export default function App() {
           <h1 className="text-4xl font-black text-black tracking-widest mb-6 text-center">ALERTE !</h1>
           
           <div className="flex flex-col gap-4 w-full max-w-sm">
-            {/* Thief Cam (Visible only in Alarm) */}
+            {/* Thief Cam */}
             <div className="relative bg-black rounded-lg overflow-hidden border-4 border-black aspect-video shadow-2xl">
-               {/* We use a callback ref to set the srcObject because cameraStream comes from state */}
               <video 
                 ref={(el) => { if (el && cameraStream) el.srcObject = cameraStream; }}
                 autoPlay 
