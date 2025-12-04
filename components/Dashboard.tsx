@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, ShieldAlert, Battery, Wifi, Activity, Phone, Edit2, Check } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, Battery, Wifi, Activity, Phone, Edit2, Check, Users, User, X, Search } from 'lucide-react';
 import { DeviceStatus, SecurityEvent } from '../types';
 
 interface DashboardProps {
@@ -8,10 +8,20 @@ interface DashboardProps {
   onUpdatePhoneNumber: (number: string) => void;
 }
 
+const MOCK_CONTACTS = [
+  { name: "Maman", number: "+33 6 01 02 03 04" },
+  { name: "Papa", number: "+33 6 99 88 77 66" },
+  { name: "Alice (Bureau)", number: "+33 7 55 44 33 22" },
+  { name: "Chéri", number: "+33 6 11 22 33 44" },
+  { name: "S.O.S Urgence", number: "112" }
+];
+
 const Dashboard: React.FC<DashboardProps> = ({ status, events, onUpdatePhoneNumber }) => {
   const [rotation, setRotation] = useState(0);
   const [isEditingPhone, setIsEditingPhone] = useState(false);
   const [tempPhone, setTempPhone] = useState(status.ownerPhoneNumber);
+  const [showContactPicker, setShowContactPicker] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Rotate the shield slowly
   useEffect(() => {
@@ -25,6 +35,21 @@ const Dashboard: React.FC<DashboardProps> = ({ status, events, onUpdatePhoneNumb
     onUpdatePhoneNumber(tempPhone);
     setIsEditingPhone(false);
   };
+
+  const handleSelectContact = (number: string) => {
+    setTempPhone(number);
+    setShowContactPicker(false);
+  };
+
+  const openContactPicker = () => {
+    setSearchTerm("");
+    setShowContactPicker(true);
+  };
+
+  const filteredContacts = MOCK_CONTACTS.filter(contact => 
+    contact.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    contact.number.includes(searchTerm)
+  );
 
   return (
     <div className="p-6 space-y-6 pb-24">
@@ -57,7 +82,7 @@ const Dashboard: React.FC<DashboardProps> = ({ status, events, onUpdatePhoneNumb
       </div>
 
       {/* Emergency Contact Configuration */}
-      <div className="bg-dark-card p-4 rounded-xl border border-gray-800 shadow-lg">
+      <div className="bg-dark-card p-4 rounded-xl border border-gray-800 shadow-lg relative overflow-hidden">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <Phone size={18} className="text-neon-green" />
@@ -72,14 +97,24 @@ const Dashboard: React.FC<DashboardProps> = ({ status, events, onUpdatePhoneNumb
         </div>
         
         {isEditingPhone ? (
-          <input 
-            type="tel" 
-            value={tempPhone}
-            onChange={(e) => setTempPhone(e.target.value)}
-            className="w-full bg-black/50 border border-neon-blue/50 rounded px-3 py-2 text-white outline-none focus:border-neon-blue"
-            placeholder="+33 6..."
-            autoFocus
-          />
+          <div className="flex gap-2">
+            <input 
+              type="tel" 
+              value={tempPhone}
+              onChange={(e) => setTempPhone(e.target.value)}
+              className="flex-1 bg-black/50 border border-neon-blue/50 rounded px-3 py-2 text-white outline-none focus:border-neon-blue"
+              placeholder="+33 6..."
+              autoFocus
+            />
+            <button 
+              type="button"
+              onClick={openContactPicker}
+              className="bg-gray-800 hover:bg-gray-700 text-neon-blue px-3 rounded border border-gray-700 flex items-center justify-center transition"
+              title="Choisir un contact"
+            >
+              <Users size={18} />
+            </button>
+          </div>
         ) : (
           <div className="flex justify-between items-center bg-black/30 p-2 rounded">
              <span className="font-mono text-gray-300">{status.ownerPhoneNumber || "Non configuré"}</span>
@@ -89,6 +124,58 @@ const Dashboard: React.FC<DashboardProps> = ({ status, events, onUpdatePhoneNumb
         <p className="text-[10px] text-gray-500 mt-2">
           Ce numéro recevra automatiquement un SMS avec la localisation GPS en cas de vol.
         </p>
+
+        {/* Simulated Contact Picker Modal */}
+        {showContactPicker && (
+          <div className="absolute inset-0 bg-dark-card z-20 flex flex-col animate-in slide-in-from-bottom-10 fade-in duration-300">
+            <div className="flex items-center justify-between p-3 border-b border-gray-800 bg-gray-900/50">
+              <span className="font-bold text-sm text-white flex items-center gap-2">
+                <Users size={14} className="text-neon-blue" />
+                Sélectionner
+              </span>
+              <button onClick={() => setShowContactPicker(false)} className="text-gray-400 hover:text-white">
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Search Bar */}
+            <div className="p-2 border-b border-gray-800">
+                <div className="relative">
+                    <Search size={14} className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500" />
+                    <input 
+                        type="text" 
+                        placeholder="Rechercher..." 
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full bg-black/40 border border-gray-700 rounded-lg pl-8 pr-2 py-1.5 text-xs text-white outline-none focus:border-neon-blue transition"
+                        autoFocus
+                    />
+                </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-2 space-y-1">
+              {filteredContacts.length === 0 ? (
+                  <div className="text-center py-4 text-gray-500 text-xs">Aucun contact trouvé</div>
+              ) : (
+                  filteredContacts.map((contact, idx) => (
+                    <button 
+                      key={idx}
+                      onClick={() => handleSelectContact(contact.number)}
+                      className="w-full flex items-center gap-3 p-2 rounded hover:bg-white/5 transition border border-transparent hover:border-gray-800 text-left group"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center text-gray-400 group-hover:text-neon-blue group-hover:bg-neon-blue/10 transition">
+                        <User size={14} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-gray-200">{contact.name}</p>
+                        <p className="text-xs text-gray-500 font-mono">{contact.number}</p>
+                      </div>
+                    </button>
+                  ))
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Stats Grid */}

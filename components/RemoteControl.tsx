@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { MapPin, Lock, Camera, Volume2, Trash2, MessageSquare } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { MapPin, Lock, Camera, Volume2, Trash2, MessageSquare, Check, AlertTriangle } from 'lucide-react';
 
 interface RemoteControlProps {
   onTriggerRemoteCamera: () => void;
@@ -8,26 +8,111 @@ interface RemoteControlProps {
 
 const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, onSendAlert }) => {
   const [activeAction, setActiveAction] = useState<string | null>(null);
+  const [successAction, setSuccessAction] = useState<string | null>(null);
+  const [showCameraSuccess, setShowCameraSuccess] = useState(false);
+  const [showWipeConfirm, setShowWipeConfirm] = useState(false);
+
+  // Manage the lifecycle of actions, specifically the Camera Scanning simulation
+  useEffect(() => {
+    let scanTimer: ReturnType<typeof setTimeout>;
+    let resetTimer: ReturnType<typeof setTimeout>;
+
+    if (activeAction === 'CAMERA') {
+      // 1. Simulate Scanning Phase (1.5s)
+      // The visual 'animate-scan' runs during this time because showCameraSuccess is false
+      scanTimer = setTimeout(() => {
+        setShowCameraSuccess(true);
+      }, 1500);
+
+      // 2. Auto-close after showing success for a while
+      resetTimer = setTimeout(() => {
+        setActiveAction(null);
+        setShowCameraSuccess(false);
+      }, 3500);
+    } else if (activeAction) {
+      // For other actions, just auto-close after a delay
+      resetTimer = setTimeout(() => {
+        setActiveAction(null);
+      }, 3000);
+    }
+
+    return () => {
+      clearTimeout(scanTimer);
+      clearTimeout(resetTimer);
+    };
+  }, [activeAction]);
 
   const performAction = (action: string) => {
+    // Prevent overlapping actions
+    if (activeAction) return;
+
+    if (action === 'WIPE') {
+      setShowWipeConfirm(true);
+      return;
+    }
+
     setActiveAction(action);
+    setShowCameraSuccess(false);
+
+    // Show temporary success feedback for immediate commands
+    if (['LOCK', 'ALARM', 'MESSAGE'].includes(action)) {
+      setSuccessAction(action);
+      setTimeout(() => setSuccessAction(null), 2000);
+    }
     
     if (action === 'CAMERA') {
       onTriggerRemoteCamera();
-    }
-    if (action === 'MESSAGE') {
+    } else if (action === 'MESSAGE') {
       onSendAlert();
     }
+  };
 
-    setTimeout(() => setActiveAction(null), 3000);
+  const confirmWipe = () => {
+    setActiveAction('WIPE');
+    setShowWipeConfirm(false);
   };
 
   return (
-    <div className="p-6 space-y-6 pb-24 h-full flex flex-col">
+    <div className="p-6 space-y-6 pb-24 h-full flex flex-col relative">
       <div className="text-center">
         <h2 className="text-2xl font-bold text-white mb-1">Contrôle à Distance</h2>
         <p className="text-gray-400 text-sm">Gérez votre appareil volé ou perdu</p>
       </div>
+
+      {/* Wipe Confirmation Modal */}
+      {showWipeConfirm && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in duration-200 rounded-xl">
+            <div className="bg-dark-card border border-neon-red p-6 rounded-xl shadow-[0_0_50px_rgba(255,0,60,0.2)] max-w-sm w-full text-center relative overflow-hidden">
+                {/* Background warning stripes */}
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-neon-red to-transparent"></div>
+                
+                <div className="w-16 h-16 bg-neon-red/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-neon-red/30">
+                    <Trash2 size={32} className="text-neon-red animate-pulse" />
+                </div>
+                
+                <h3 className="text-xl font-bold text-white mb-2 tracking-wider">DANGER ZONE</h3>
+                <p className="text-gray-300 text-sm mb-6 leading-relaxed">
+                    Are you sure you want to wipe all data? This action cannot be undone.
+                </p>
+                
+                <div className="flex gap-3">
+                    <button 
+                        onClick={() => setShowWipeConfirm(false)}
+                        className="flex-1 py-3 rounded-lg border border-gray-700 text-gray-400 hover:text-white hover:bg-gray-800 transition font-medium text-sm"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        onClick={confirmWipe}
+                        className="flex-1 py-3 rounded-lg bg-neon-red text-black font-bold hover:bg-red-500 transition shadow-[0_0_20px_rgba(255,0,60,0.3)] text-sm flex items-center justify-center gap-2"
+                    >
+                        <Trash2 size={16} />
+                        Confirm
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
 
       {/* Map / Viewport Area */}
       <div className="w-full h-48 bg-gray-800 rounded-xl overflow-hidden relative border border-gray-700 group">
@@ -51,34 +136,51 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
           {/* Cyberpunk Grid Background */}
           <div className="absolute inset-0 bg-[linear-gradient(rgba(0,243,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(0,243,255,0.05)_1px,transparent_1px)] bg-[size:20px_20px]"></div>
           
-          {/* Scanning Line Animation */}
-          {activeAction === 'CAMERA' && (
-             <div className="absolute top-0 w-full h-full bg-gradient-to-b from-transparent via-neon-green/20 to-transparent animate-scan">
+          {/* Scanning Line Animation - Only show if not success yet */}
+          {activeAction === 'CAMERA' && !showCameraSuccess && (
+             <div className="absolute top-0 w-full h-full bg-gradient-to-b from-transparent via-neon-green/20 to-transparent animate-scan z-10 pointer-events-none">
                 <div className="absolute bottom-0 w-full h-[2px] bg-neon-green shadow-[0_0_15px_#0aff0a]"></div>
              </div>
           )}
 
-          {/* HUD Focus Brackets */}
-          <div className="relative w-24 h-24 transition-all duration-500 transform scale-100 flex items-center justify-center">
-            <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-neon-green"></div>
-            <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-neon-green"></div>
-            <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-neon-green"></div>
-            <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-neon-green"></div>
-            
-            {/* Center Target Dot */}
-            <div className="w-1 h-1 bg-neon-red rounded-full animate-ping"></div>
-          </div>
+          {/* Success Overlay */}
+          {showCameraSuccess && (
+             <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/80 animate-in fade-in zoom-in duration-300">
+                <div className="p-3 bg-neon-green/20 rounded-full border-2 border-neon-green text-neon-green mb-3 shadow-[0_0_20px_rgba(10,255,10,0.3)]">
+                   <Check size={32} strokeWidth={3} />
+                </div>
+                <span className="text-neon-green font-bold tracking-widest text-sm uppercase">Photo captured successfully!</span>
+                <span className="text-gray-500 text-[10px] font-mono mt-1">EVIDENCE SECURED ON CLOUD</span>
+             </div>
+          )}
 
-          {/* Status Text Overlay */}
-          <div className="absolute top-3 left-3 flex items-center gap-2">
-             <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-             <span className="text-[10px] font-mono text-neon-green tracking-widest">REMOTE_LINK::ESTABLISHED</span>
-          </div>
+          {/* HUD Focus Brackets - Hide on success */}
+          {!showCameraSuccess && (
+            <div className="relative w-24 h-24 transition-all duration-500 transform scale-100 flex items-center justify-center">
+              <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-neon-green"></div>
+              <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-neon-green"></div>
+              <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-neon-green"></div>
+              <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-neon-green"></div>
+              
+              {/* Center Target Dot */}
+              <div className="w-1 h-1 bg-neon-red rounded-full animate-ping"></div>
+            </div>
+          )}
 
-          <div className="absolute bottom-3 right-3 text-right">
-             <div className="text-[10px] font-mono text-neon-green opacity-70">ISO 800</div>
-             <div className="text-[10px] font-mono text-neon-blue animate-pulse tracking-widest">ACQUIRING TARGET...</div>
-          </div>
+          {/* Status Text Overlay - Hide on success */}
+          {!showCameraSuccess && (
+            <>
+              <div className="absolute top-3 left-3 flex items-center gap-2">
+                 <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                 <span className="text-[10px] font-mono text-neon-green tracking-widest">REMOTE_LINK::ESTABLISHED</span>
+              </div>
+
+              <div className="absolute bottom-3 right-3 text-right">
+                 <div className="text-[10px] font-mono text-neon-green opacity-70">ISO 800</div>
+                 <div className="text-[10px] font-mono text-neon-blue animate-pulse tracking-widest">ACQUIRING TARGET...</div>
+              </div>
+            </>
+          )}
         </div>
 
       </div>
@@ -87,22 +189,40 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
       <div className="grid grid-cols-2 gap-4">
         <button 
           onClick={() => performAction('LOCK')}
-          className="bg-dark-card p-4 rounded-xl border border-gray-800 flex flex-col items-center justify-center gap-2 hover:bg-gray-800 transition active:scale-95"
+          className="bg-dark-card p-4 rounded-xl border border-gray-800 flex flex-col items-center justify-center gap-2 hover:bg-gray-800 transition active:scale-95 relative overflow-hidden"
         >
-          <div className="p-3 rounded-full bg-neon-blue/10">
-            <Lock size={24} className="text-neon-blue" />
-          </div>
-          <span className="font-medium text-sm">Verrouiller</span>
+          {successAction === 'LOCK' ? (
+             <div className="absolute inset-0 bg-gray-800 flex flex-col items-center justify-center animate-in fade-in duration-300">
+               <Check size={24} className="text-neon-blue mb-1" />
+               <span className="text-[10px] font-bold text-neon-blue tracking-widest">CMD SENT</span>
+             </div>
+          ) : (
+            <>
+              <div className="p-3 rounded-full bg-neon-blue/10">
+                <Lock size={24} className="text-neon-blue" />
+              </div>
+              <span className="font-medium text-sm">Verrouiller</span>
+            </>
+          )}
         </button>
 
         <button 
           onClick={() => performAction('ALARM')}
-          className="bg-dark-card p-4 rounded-xl border border-gray-800 flex flex-col items-center justify-center gap-2 hover:bg-gray-800 transition active:scale-95"
+          className="bg-dark-card p-4 rounded-xl border border-gray-800 flex flex-col items-center justify-center gap-2 hover:bg-gray-800 transition active:scale-95 relative overflow-hidden"
         >
-          <div className="p-3 rounded-full bg-neon-purple/10">
-            <Volume2 size={24} className="text-neon-purple" />
-          </div>
-          <span className="font-medium text-sm">Alarme Force</span>
+          {successAction === 'ALARM' ? (
+             <div className="absolute inset-0 bg-gray-800 flex flex-col items-center justify-center animate-in fade-in duration-300">
+               <Check size={24} className="text-neon-purple mb-1" />
+               <span className="text-[10px] font-bold text-neon-purple tracking-widest">ACTIVATED</span>
+             </div>
+          ) : (
+            <>
+              <div className="p-3 rounded-full bg-neon-purple/10">
+                <Volume2 size={24} className="text-neon-purple" />
+              </div>
+              <span className="font-medium text-sm">Alarme Force</span>
+            </>
+          )}
         </button>
 
         <button 
@@ -117,12 +237,21 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
 
         <button 
           onClick={() => performAction('MESSAGE')}
-          className="bg-dark-card p-4 rounded-xl border border-gray-800 flex flex-col items-center justify-center gap-2 hover:bg-gray-800 transition active:scale-95 group"
+          className="bg-dark-card p-4 rounded-xl border border-gray-800 flex flex-col items-center justify-center gap-2 hover:bg-gray-800 transition active:scale-95 group relative overflow-hidden"
         >
-          <div className="p-3 rounded-full bg-yellow-500/10 group-hover:bg-yellow-500/20">
-            <MessageSquare size={24} className="text-yellow-500" />
-          </div>
-          <span className="font-medium text-sm text-yellow-500">SOS Alert</span>
+          {successAction === 'MESSAGE' ? (
+             <div className="absolute inset-0 bg-gray-800 flex flex-col items-center justify-center animate-in fade-in duration-300">
+               <Check size={24} className="text-yellow-500 mb-1" />
+               <span className="text-[10px] font-bold text-yellow-500 tracking-widest">ALERT SENT</span>
+             </div>
+          ) : (
+            <>
+              <div className="p-3 rounded-full bg-yellow-500/10 group-hover:bg-yellow-500/20">
+                <MessageSquare size={24} className="text-yellow-500" />
+              </div>
+              <span className="font-medium text-sm text-yellow-500">SOS Alert</span>
+            </>
+          )}
         </button>
       </div>
 
@@ -146,7 +275,11 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
         {activeAction === 'CAMERA' && (
           <>
             <p className="text-neon-green">[CMD] Requesting FRONT_CAMERA_SNAPSHOT...</p>
-            <p className="text-neon-green animate-pulse"> >> UPLOADING EVIDENCE TO CLOUD...</p>
+            {showCameraSuccess ? (
+              <p className="text-neon-green font-bold"> >> SUCCESS: IMAGE UPLOADED [ID:7382]</p>
+            ) : (
+              <p className="text-neon-green animate-pulse"> >> UPLOADING EVIDENCE TO CLOUD...</p>
+            )}
           </>
         )}
         {activeAction === 'MESSAGE' && (
@@ -156,7 +289,9 @@ const RemoteControl: React.FC<RemoteControlProps> = ({ onTriggerRemoteCamera, on
             <p className="text-neon-green"> >> DELIVERY CONFIRMED</p>
           </>
         )}
-        {activeAction === 'WIPE' && <p className="text-neon-red">[WARN] WIPE_DATA initiated. Awaiting confirmation...</p>}
+        {activeAction === 'WIPE' && (
+          <p className="text-neon-red font-bold animate-pulse">[CRITICAL] WIPE_DATA SEQUENCE INITIATED... ERASING SECTORS...</p>
+        )}
       </div>
     </div>
   );

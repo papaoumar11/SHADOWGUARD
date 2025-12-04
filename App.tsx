@@ -6,12 +6,13 @@ import AntiSpy from './components/AntiSpy';
 import RemoteControl from './components/RemoteControl';
 import Reports from './components/Reports';
 import { AppView, DeviceStatus, SecurityEvent } from './types';
-import { Siren, X, Camera, Smartphone, Eye } from 'lucide-react';
+import { Siren, X, Camera, Smartphone, Eye, MessageSquare, CheckCircle } from 'lucide-react';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<AppView>(AppView.DASHBOARD);
   const [isAlarmActive, setIsAlarmActive] = useState(false);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [smsSent, setSmsSent] = useState(false);
   
   // Ref for the hidden video element used for capturing frames (canvas drawing)
   const captureVideoRef = useRef<HTMLVideoElement>(null);
@@ -56,6 +57,13 @@ export default function App() {
   };
 
   const sendEmergencyAlert = () => {
+    // Validation check
+    if (!status.ownerPhoneNumber || status.ownerPhoneNumber === "Non configuré") {
+      console.warn("Emergency SMS skipped: No phone number configured");
+      return;
+    }
+
+    setSmsSent(true);
     setEvents(prev => [{
       id: Date.now().toString(),
       type: 'MESSAGE',
@@ -265,7 +273,8 @@ export default function App() {
   }, [isAlarmActive]);
 
   const triggerAlarm = () => {
-    setCaptures([]); 
+    setCaptures([]);
+    setSmsSent(false); 
     setIsAlarmActive(true);
     const newEvent: SecurityEvent = {
       id: Date.now().toString(),
@@ -280,7 +289,7 @@ export default function App() {
     // Auto-send emergency SMS when alarm triggers
     setTimeout(() => {
       sendEmergencyAlert();
-    }, 1000);
+    }, 1500);
   };
 
   const stopAlarm = () => {
@@ -320,6 +329,14 @@ export default function App() {
                  <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse"></div>
                  <span className="text-red-600 font-mono text-[10px] font-bold">REC</span>
               </div>
+
+              {/* SMS Sent Notification Overlay on Video */}
+              {smsSent && (
+                <div className="absolute bottom-2 left-2 right-2 flex items-center justify-center gap-2 bg-green-500/90 backdrop-blur px-2 py-1 rounded text-xs text-black font-bold animate-in fade-in slide-in-from-bottom-2">
+                  <CheckCircle size={14} />
+                  <span>SMS ENVOYÉ AU PROPRIÉTAIRE</span>
+                </div>
+              )}
             </div>
 
             {/* Evidence Preview Strip */}
