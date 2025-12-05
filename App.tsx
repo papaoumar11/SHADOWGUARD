@@ -33,6 +33,9 @@ export default function App() {
   // Used to signal RemoteControl when recording stops
   const [recordingFinishedAt, setRecordingFinishedAt] = useState<number | null>(null);
 
+  // Initialization State to prevent overwriting DB with defaults on mount
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
+
   // Mock State
   const [status, setStatus] = useState<DeviceStatus>({
     batteryLevel: 85,
@@ -47,13 +50,27 @@ export default function App() {
 
   // --- SUPABASE INTEGRATION ---
 
-  // 1. Fetch Initial Data (Events & Settings)
+  // 1. Fetch Initial Data (Events, Settings, Device Status)
   useEffect(() => {
     const fetchInitialData = async () => {
       // Fetch Settings
       const { data: settings } = await supabase.from('settings').select('*').single();
       if (settings && settings.owner_phone) {
         setStatus(prev => ({ ...prev, ownerPhoneNumber: settings.owner_phone }));
+      }
+
+      // Fetch Device Status (Battery, Protection, etc.)
+      const { data: deviceStatus, error: statusError } = await supabase.from('device_status').select('*').eq('id', 1).single();
+      
+      if (deviceStatus) {
+        setStatus(prev => ({
+          ...prev,
+          batteryLevel: deviceStatus.battery_level ?? prev.batteryLevel,
+          isCharging: deviceStatus.is_charging ?? prev.isCharging,
+          isProtected: deviceStatus.is_protected ?? prev.isProtected
+        }));
+      } else if (statusError && statusError.code !== 'PGRST116') { // Ignore "Row not found" error
+         console.warn("Failed to fetch device status:", statusError.message);
       }
 
       // Fetch Events
@@ -92,6 +109,9 @@ export default function App() {
             }
         ]);
       }
+
+      // Mark initial data as loaded so we can start syncing changes
+      setIsDataLoaded(true);
     };
 
     fetchInitialData();
@@ -137,6 +157,61 @@ export default function App() {
     return () => {
       supabase.removeChannel(channel);
     };
+  }, []);
+
+  // Sync Device Status changes to Supabase (Battery, Protected, Charging)
+  useEffect(() => {
+    // Prevent syncing default state over server state on mount
+    if (!isDataLoaded) return;
+
+    const syncDeviceStatus = async () => {
+        const { error } = await supabase.from('device_status').upsert({
+            id: 1, // Using ID 1 for single device demo
+            battery_level: status.batteryLevel,
+            is_charging: status.isCharging,
+            is_protected: status.isProtected,
+            updated_at: new Date().toISOString()
+        });
+        
+        if (error) {
+            console.error("Error syncing device status:", error.message);
+        }
+    };
+
+    // Only sync if values differ from what might be in DB (simple debounce/check handled by effect dependency)
+    syncDeviceStatus();
+  }, [status.batteryLevel, status.isCharging, status.isProtected, isDataLoaded]);
+
+  // Battery Simulation (Drain over time)
+  useEffect(() => {
+    const batteryInterval = setInterval(() => {
+        setStatus(prev => {
+            let newLevel = prev.batteryLevel;
+            let charging = prev.isCharging;
+
+            if (charging) {
+                newLevel += 5;
+                if (newLevel >= 100) {
+                    newLevel = 100;
+                    charging = false; // Stop charging at 100
+                }
+            } else {
+                newLevel -= 1;
+                if (newLevel <= 5) {
+                    newLevel = 5;
+                    charging = true; // Auto plug-in at critical level
+                }
+            }
+
+            return {
+                ...prev,
+                batteryLevel: newLevel,
+                isCharging: charging
+            };
+        });
+    }, 30000); // Update every 30 seconds
+
+    return () => clearInterval(batteryInterval);
   }, []);
 
   // Check for existing lockdown on mount (Persistence)
@@ -835,7 +910,7 @@ export default function App() {
               recordingFinishedAt={recordingFinishedAt}
             />
           )}
-          {currentView === AppView.REPORTS && <Reports />}
+          {currentView === AppView.REPORTS && <Reports events={events} />}
         </div>
         
         {/* Bottom Nav */}
