@@ -263,7 +263,7 @@ const RemoteControl: React.FC<RemoteControlProps> = ({
           
           {/* Scanning Line Animation - Only show if not success yet and not recording */}
           {activeAction === 'CAMERA' && !showCameraSuccess && !closingCamera && !isRecording && (
-             <div className="absolute top-0 w-full h-full bg-gradient-to-b from-transparent via-neon-green/20 to-transparent animate-scan z-10 pointer-events-none">
+             <div className="absolute top-0 w-full h-full bg-gradient-to-b from-transparent via-neon-green/30 to-transparent animate-scan z-10 pointer-events-none">
                 <div className="absolute bottom-0 w-full h-[2px] bg-neon-green shadow-[0_0_15px_#0aff0a]"></div>
              </div>
           )}
