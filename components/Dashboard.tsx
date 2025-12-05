@@ -215,17 +215,20 @@ const Dashboard: React.FC<DashboardProps> = ({ status, events, onUpdatePhoneNumb
             {status.location ? (
                 <>
                     <div className="relative mb-2">
-                        <Satellite size={24} className="text-neon-blue relative z-10 drop-shadow-[0_0_10px_rgba(0,243,255,0.8)] animate-pulse" />
-                        <div className="absolute inset-0 bg-neon-blue blur-md opacity-50 animate-pulse"></div>
+                        {/* Enhanced subtle glow animation */}
+                        <Satellite size={24} className="text-neon-blue relative z-10 drop-shadow-[0_0_15px_rgba(0,243,255,0.6)] animate-pulse" />
+                        <div className="absolute inset-0 bg-neon-blue blur-xl opacity-40 animate-pulse"></div>
                     </div>
-                    <span className="text-lg font-bold text-white tracking-wide">SAT LINKED</span>
-                    <span className="text-[10px] text-neon-green font-mono uppercase tracking-widest mt-1">HIGH ACCURACY</span>
+                    {/* Combined text as requested */}
+                    <span className="text-sm font-bold text-white tracking-wide text-center">
+                        SAT LINKED <span className="text-neon-green text-xs block md:inline">(HIGH ACCURACY)</span>
+                    </span>
                 </>
             ) : (
                 <>
                     <Satellite size={24} className="mb-2 text-gray-500 animate-bounce" />
                     <span className="text-lg font-bold text-gray-400 animate-pulse">ACQUIRING...</span>
-                    <span className="text-[10px] text-gray-600 font-mono uppercase tracking-widest">Searching Satellites</span>
+                    <span className="text-[10px] text-gray-600 font-mono uppercase tracking-widest animate-pulse">Searching Satellites</span>
                 </>
             )}
         </div>
