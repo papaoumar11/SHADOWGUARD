@@ -42,16 +42,17 @@ const RemoteControl: React.FC<RemoteControlProps> = ({
       // 2. Start Closing Visuals (ONLY if not recording)
       // If isRecording is true, we keep the camera open indefinitely until user stops recording
       if (!isRecording) {
+        // Extended timeout: Close sequence starts at 14s, finishes at 15s
         closeStartTimer = setTimeout(() => {
             setClosingCamera(true);
-        }, 3500);
+        }, 14000);
 
         // 3. Auto-close
         resetTimer = setTimeout(() => {
             setActiveAction(null);
             setShowCameraSuccess(false);
             setClosingCamera(false);
-        }, 4500);
+        }, 15000);
       }
     } else if (activeAction === 'MESSAGE') {
        // Handled manually in performAction for timing

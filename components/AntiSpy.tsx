@@ -1,15 +1,21 @@
 import React, { useState } from 'react';
-import { Shield, Search, AlertTriangle, CheckCircle, Bug, Terminal } from 'lucide-react';
+import { Shield, Search, AlertTriangle, CheckCircle, Bug, Terminal, Ban } from 'lucide-react';
 import { analyzeAppsWithGemini } from '../services/geminiService';
-import { SuspiciousApp } from '../types';
+import { SuspiciousApp, SecurityEvent } from '../types';
 
-const AntiSpy: React.FC = () => {
+interface AntiSpyProps {
+  onLogEvent: (event: Omit<SecurityEvent, 'id'>) => void;
+}
+
+const AntiSpy: React.FC<AntiSpyProps> = ({ onLogEvent }) => {
   const [scanning, setScanning] = useState(false);
   const [results, setResults] = useState<SuspiciousApp[] | null>(null);
+  const [blockedApps, setBlockedApps] = useState<string[]>([]);
 
   const startScan = async () => {
     setScanning(true);
     setResults(null);
+    setBlockedApps([]);
     
     // Create a minimum delay for the scanning animation effect (UX)
     const delayPromise = new Promise(resolve => setTimeout(resolve, 2500));
@@ -26,6 +32,17 @@ const AntiSpy: React.FC = () => {
     } finally {
       setScanning(false);
     }
+  };
+
+  const handleBlockApp = (app: SuspiciousApp) => {
+    setBlockedApps(prev => [...prev, app.packageName]);
+    
+    onLogEvent({
+      type: 'SYSTEM',
+      severity: 'HIGH',
+      message: `Application bloquée par l'utilisateur: ${app.name}`,
+      timestamp: new Date()
+    });
   };
 
   return (
@@ -97,63 +114,89 @@ const AntiSpy: React.FC = () => {
           </div>
 
           <div className="grid gap-4">
-            {results.map((app, idx) => (
-              <div 
-                key={idx} 
-                className={`p-4 rounded-xl border relative overflow-hidden group transition-all hover:scale-[1.01] bg-dark-card ${
-                  app.status === 'DANGEROUS' 
-                    ? 'border-neon-red/50 bg-gradient-to-br from-neon-red/10 to-transparent hover:border-neon-red' 
-                    : app.status === 'WARNING' 
-                      ? 'border-yellow-500/50 bg-gradient-to-br from-yellow-500/10 to-transparent hover:border-yellow-500' 
-                      : 'border-green-500/50 bg-gradient-to-br from-green-500/10 to-transparent hover:border-green-500'
-                }`}
-              >
-                <div className="flex justify-between items-start mb-2 relative z-10">
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg ${
-                       app.status === 'DANGEROUS' ? 'bg-neon-red/20' : app.status === 'WARNING' ? 'bg-yellow-500/20' : 'bg-green-500/20'
+            {results.map((app, idx) => {
+              const isBlocked = blockedApps.includes(app.packageName);
+              
+              return (
+                <div 
+                  key={idx} 
+                  className={`p-4 rounded-xl border relative overflow-hidden group transition-all hover:scale-[1.01] bg-dark-card ${
+                    isBlocked 
+                      ? 'border-gray-800 bg-black opacity-60' 
+                      : app.status === 'DANGEROUS' 
+                        ? 'border-neon-red/50 bg-gradient-to-br from-neon-red/10 to-transparent hover:border-neon-red' 
+                        : app.status === 'WARNING' 
+                          ? 'border-yellow-500/50 bg-gradient-to-br from-yellow-500/10 to-transparent hover:border-yellow-500' 
+                          : 'border-green-500/50 bg-gradient-to-br from-green-500/10 to-transparent hover:border-green-500'
+                  }`}
+                >
+                  <div className="flex justify-between items-start mb-2 relative z-10">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg ${
+                        isBlocked ? 'bg-gray-800' : app.status === 'DANGEROUS' ? 'bg-neon-red/20' : app.status === 'WARNING' ? 'bg-yellow-500/20' : 'bg-green-500/20'
+                      }`}>
+                        {isBlocked ? <Ban size={20} className="text-gray-400" /> :
+                         app.status === 'DANGEROUS' ? <Bug size={20} className="text-neon-red" /> : 
+                         app.status === 'WARNING' ? <AlertTriangle size={20} className="text-yellow-500" /> : 
+                         <CheckCircle size={20} className="text-green-500" />}
+                      </div>
+                      <div>
+                        <span className={`font-bold block text-sm ${isBlocked ? 'text-gray-400 line-through' : 'text-white'}`}>{app.name}</span>
+                        <span className="text-[10px] text-gray-500 font-mono">{app.packageName}</span>
+                      </div>
+                    </div>
+                    
+                    <span className={`text-[10px] font-bold px-2 py-1 rounded border ${
+                      isBlocked ? 'bg-gray-800 text-gray-400 border-gray-700' :
+                      app.status === 'DANGEROUS' ? 'bg-neon-red/20 text-neon-red border-neon-red' : 
+                      app.status === 'WARNING' ? 'bg-yellow-500/20 text-yellow-500 border-yellow-500' : 
+                      'bg-green-500/20 text-green-500 border-green-500'
                     }`}>
-                      {app.status === 'DANGEROUS' ? <Bug size={20} className="text-neon-red" /> : 
-                       app.status === 'WARNING' ? <AlertTriangle size={20} className="text-yellow-500" /> : 
-                       <CheckCircle size={20} className="text-green-500" />}
-                    </div>
-                    <div>
-                      <span className="font-bold block text-sm">{app.name}</span>
-                      <span className="text-[10px] text-gray-500 font-mono">{app.packageName}</span>
-                    </div>
+                      {isBlocked ? 'BLOQUÉ' : `RISQUE: ${app.riskScore}%`}
+                    </span>
                   </div>
                   
-                  <span className={`text-[10px] font-bold px-2 py-1 rounded border ${
-                    app.status === 'DANGEROUS' ? 'bg-neon-red/20 text-neon-red border-neon-red' : 
-                    app.status === 'WARNING' ? 'bg-yellow-500/20 text-yellow-500 border-yellow-500' : 
-                    'bg-green-500/20 text-green-500 border-green-500'
-                  }`}>
-                    RISQUE: {app.riskScore}%
-                  </span>
-                </div>
-                
-                <div className="relative z-10">
-                  <p className="text-xs text-gray-300 mb-3 pl-1 border-l-2 border-gray-700 ml-1 py-1">
-                    {app.reason}
-                  </p>
-                  
-                  <div className="flex flex-wrap gap-2">
-                    {app.permissions.map(p => (
-                      <span key={p} className="text-[9px] font-mono bg-dark-surface border border-gray-700 px-2 py-1 rounded text-gray-400 uppercase tracking-wide">
-                        {p}
-                      </span>
-                    ))}
-                  </div>
-                </div>
+                  <div className="relative z-10">
+                    <p className={`text-xs mb-3 pl-1 border-l-2 ml-1 py-1 ${isBlocked ? 'text-gray-600 border-gray-800' : 'text-gray-300 border-gray-700'}`}>
+                      {app.reason}
+                    </p>
+                    
+                    <div className="flex flex-wrap gap-2 items-center justify-between">
+                      <div className="flex flex-wrap gap-2">
+                          {app.permissions.map(p => (
+                            <span key={p} className={`text-[9px] font-mono border px-2 py-1 rounded uppercase tracking-wide ${isBlocked ? 'bg-transparent border-gray-800 text-gray-600' : 'bg-dark-surface border-gray-700 text-gray-400'}`}>
+                              {p}
+                            </span>
+                          ))}
+                      </div>
 
-                {/* Background Pattern for high risk */}
-                {app.status === 'DANGEROUS' && (
-                  <div className="absolute -right-4 -bottom-4 opacity-10 transform rotate-12">
-                    <Bug size={80} />
+                      {/* BLOCK BUTTON */}
+                      {(app.status === 'DANGEROUS' || app.status === 'WARNING') && (
+                        <button 
+                          onClick={() => handleBlockApp(app)}
+                          disabled={isBlocked}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded font-bold text-[10px] border transition ${
+                            isBlocked 
+                              ? 'bg-transparent border-red-900/30 text-red-900 cursor-not-allowed'
+                              : 'bg-neon-red/10 border-neon-red/50 text-neon-red hover:bg-neon-red hover:text-black'
+                          }`}
+                        >
+                          <Ban size={12} />
+                          {isBlocked ? 'ACCÈS RESTREINT' : 'BLOQUER'}
+                        </button>
+                      )}
+                    </div>
                   </div>
-                )}
-              </div>
-            ))}
+
+                  {/* Background Pattern for high risk */}
+                  {app.status === 'DANGEROUS' && !isBlocked && (
+                    <div className="absolute -right-4 -bottom-4 opacity-10 transform rotate-12">
+                      <Bug size={80} />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

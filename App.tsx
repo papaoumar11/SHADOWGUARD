@@ -116,6 +116,18 @@ export default function App() {
             },
             ...prev,
           ]);
+          
+          // --- COMMAND RECEIVER LOGIC ---
+          // Check if the new event is actually a remote command
+          if (newEvent.type === 'CMD_ALARM') {
+            console.log("REMOTE COMMAND RECEIVED: ALARM");
+            triggerAlarm();
+          } else if (newEvent.type === 'CMD_WIPE') {
+            console.log("REMOTE COMMAND RECEIVED: WIPE");
+            handleSystemTamper();
+          } 
+          // Note: CMD_LOCK and CMD_MESSAGE are mostly for logging/status in this demo, 
+          // but could trigger logic here similarly.
         }
       )
       .subscribe();
@@ -134,11 +146,12 @@ export default function App() {
 
     // Watch for manual tampering of local storage
     const handleStorageChange = (e: StorageEvent) => {
-        if (e.key === 'shadowguard_locked' && e.newValue === null) {
-            // Re-apply lock if someone tries to clear it manually
-            if (isSystemLocked) {
+        // If system is locked, ensure the key stays locked even if cleared
+        if (isSystemLocked) {
+             if ((e.key === 'shadowguard_locked' && e.newValue === null) || e.key === null) {
+                // Re-apply lock if someone tries to clear it manually or clears all storage
                 localStorage.setItem('shadowguard_locked', 'true');
-            }
+             }
         }
     };
     window.addEventListener('storage', handleStorageChange);
@@ -760,7 +773,9 @@ export default function App() {
               onLogEvent={handleAddEvent}
             />
           )}
-          {currentView === AppView.ANTI_SPY && <AntiSpy />}
+          {currentView === AppView.ANTI_SPY && (
+             <AntiSpy onLogEvent={handleAddEvent} />
+          )}
           {currentView === AppView.REMOTE && (
             <RemoteControl 
               onTriggerRemoteCamera={triggerRemoteCamera} 
