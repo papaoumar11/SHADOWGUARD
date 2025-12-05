@@ -491,20 +491,57 @@ export default function App() {
         }
       };
 
-      recorder.onstop = () => {
+      // Handle Stop and Upload to Supabase
+      recorder.onstop = async () => {
         const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
-        const url = URL.createObjectURL(blob);
-        setCaptures(prev => [...prev, { type: 'VIDEO', url: url, timestamp: new Date() }]);
+        const timestamp = Date.now();
+        const fileName = `evidence_${timestamp}.webm`;
         
-        // Notify RemoteControl that recording is finished (to trigger UI cleanup/auto-close)
-        setRecordingFinishedAt(Date.now());
+        let videoUrl = "";
 
-        handleAddEvent({
-            type: 'SYSTEM',
-            severity: 'MEDIUM',
-            message: 'Enregistrement vidéo de surveillance terminé',
-            timestamp: new Date()
-        });
+        try {
+            // Upload to Supabase Storage
+            console.log("Uploading surveillance video...");
+            const { error: uploadError } = await supabase.storage
+                .from('recordings')
+                .upload(fileName, blob, {
+                    contentType: 'video/webm'
+                });
+
+            if (uploadError) {
+                console.error("Supabase Upload Error:", uploadError.message);
+                // Fallback to local URL if upload fails
+                videoUrl = URL.createObjectURL(blob);
+            } else {
+                // Get Public URL
+                const { data: publicUrlData } = supabase.storage
+                    .from('recordings')
+                    .getPublicUrl(fileName);
+                
+                videoUrl = publicUrlData.publicUrl;
+                console.log("Video uploaded successfully:", videoUrl);
+            }
+
+            // Update State with the final URL
+            setCaptures(prev => [...prev, { type: 'VIDEO', url: videoUrl, timestamp: new Date() }]);
+            
+            // Notify RemoteControl that recording is finished
+            setRecordingFinishedAt(Date.now());
+
+            handleAddEvent({
+                type: 'SYSTEM',
+                severity: 'MEDIUM',
+                message: `Enregistrement vidéo terminé (Upload: ${videoUrl ? 'OK' : 'Failed'})`,
+                timestamp: new Date()
+            });
+
+        } catch (e) {
+            console.error("Unexpected error during upload:", e);
+            // Fallback
+            videoUrl = URL.createObjectURL(blob);
+            setCaptures(prev => [...prev, { type: 'VIDEO', url: videoUrl, timestamp: new Date() }]);
+            setRecordingFinishedAt(Date.now());
+        }
       };
 
       recorder.start();
