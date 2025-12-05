@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MapPin, Lock, Camera, Volume2, Trash2, MessageSquare, Check, AlertTriangle, Satellite, Loader2, Video, StopCircle } from 'lucide-react';
+import { supabase } from '../services/supabaseClient';
 
 interface RemoteControlProps {
   onTriggerRemoteCamera: () => void;
@@ -73,7 +74,7 @@ const RemoteControl: React.FC<RemoteControlProps> = ({
     };
   }, [activeAction, isRecording]);
 
-  const performAction = (action: string) => {
+  const performAction = async (action: string) => {
     // Prevent overlapping actions unless toggling recording inside camera view
     if (activeAction && action !== 'VIDEO_TOGGLE') return;
 
@@ -85,14 +86,14 @@ const RemoteControl: React.FC<RemoteControlProps> = ({
     if (action === 'VIDEO_TOGGLE') {
         if (isRecording) {
             onStopRecording();
-            // Allow auto-close to happen after a short delay now that recording stopped
+            // Allow auto-close to happen after a brief delay (2 seconds) now that recording stopped
             setTimeout(() => {
                 setClosingCamera(true);
                 setTimeout(() => {
                     setActiveAction(null);
                     setClosingCamera(false);
                 }, 1000);
-            }, 1000);
+            }, 2000);
         } else {
             onStartRecording();
             // Ensure we are in camera visual mode
@@ -112,6 +113,13 @@ const RemoteControl: React.FC<RemoteControlProps> = ({
     // MESSAGE Action with Network Simulation
     if (action === 'MESSAGE') {
       setIsSendingMessage(true);
+      // Send command to Supabase
+      await supabase.from('events').insert({
+        type: 'CMD_MESSAGE',
+        severity: 'HIGH',
+        message: 'REMOTE_CMD: SOS Alert Requested'
+      });
+
       setTimeout(() => {
         onSendAlert();
         setIsSendingMessage(false);
@@ -124,6 +132,14 @@ const RemoteControl: React.FC<RemoteControlProps> = ({
     // Immediate actions
     if (['LOCK', 'ALARM'].includes(action)) {
       setSuccessAction(action);
+      
+      // Send command to Supabase
+      await supabase.from('events').insert({
+        type: action === 'ALARM' ? 'CMD_ALARM' : 'CMD_LOCK',
+        severity: 'HIGH',
+        message: `REMOTE_CMD: ${action} Triggered`
+      });
+
       setTimeout(() => setSuccessAction(null), 2000);
     }
     
@@ -132,9 +148,17 @@ const RemoteControl: React.FC<RemoteControlProps> = ({
     }
   };
 
-  const confirmWipe = () => {
+  const confirmWipe = async () => {
     setActiveAction('WIPE');
     setShowWipeConfirm(false);
+    
+    // Send command to Supabase
+    await supabase.from('events').insert({
+        type: 'CMD_WIPE',
+        severity: 'CRITICAL',
+        message: 'REMOTE_CMD: SECURE WIPE INITIATED'
+    });
+
     // Execute the actual wipe/lockdown logic passed from App
     onRemoteWipe();
   };

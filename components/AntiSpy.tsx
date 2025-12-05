@@ -27,6 +27,19 @@ const AntiSpy: React.FC<AntiSpyProps> = ({ onLogEvent }) => {
       // Wait for both the delay and the analysis to complete
       const [_, data] = await Promise.all([delayPromise, analysisPromise]);
       setResults(data);
+
+      // Automatically log security events for threats found
+      data.forEach(app => {
+        if (app.status === 'DANGEROUS' || app.status === 'WARNING') {
+          onLogEvent({
+            type: 'SPYWARE',
+            severity: app.status === 'DANGEROUS' ? 'HIGH' : 'MEDIUM',
+            message: `Menace détectée: ${app.name} - ${app.reason}`,
+            timestamp: new Date()
+          });
+        }
+      });
+
     } catch (error) {
       console.error("Scan failed", error);
     } finally {

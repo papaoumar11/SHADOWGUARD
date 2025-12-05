@@ -215,11 +215,11 @@ const Dashboard: React.FC<DashboardProps> = ({ status, events, onUpdatePhoneNumb
             {status.location ? (
                 <>
                     <div className="relative mb-2">
-                        <Satellite size={24} className="text-neon-blue relative z-10" />
+                        <Satellite size={24} className="text-neon-blue relative z-10 drop-shadow-[0_0_10px_rgba(0,243,255,0.8)] animate-pulse" />
                         <div className="absolute inset-0 bg-neon-blue blur-md opacity-50 animate-pulse"></div>
                     </div>
-                    <span className="text-xl font-bold text-white tracking-wide">SAT LINKED</span>
-                    <span className="text-[10px] text-neon-blue font-mono uppercase tracking-widest">Global Positioning</span>
+                    <span className="text-lg font-bold text-white tracking-wide">SAT LINKED</span>
+                    <span className="text-[10px] text-neon-green font-mono uppercase tracking-widest mt-1">HIGH ACCURACY</span>
                 </>
             ) : (
                 <>

@@ -30,6 +30,8 @@ export default function App() {
 
   // Evidence State
   const [captures, setCaptures] = useState<{ type: 'THIEF' | 'SCREEN' | 'VIDEO', url: string, timestamp: Date }[]>([]);
+  // Used to signal RemoteControl when recording stops
+  const [recordingFinishedAt, setRecordingFinishedAt] = useState<number | null>(null);
 
   // Mock State
   const [status, setStatus] = useState<DeviceStatus>({
@@ -220,6 +222,16 @@ export default function App() {
     }));
   };
 
+  const simulateGPSError = () => {
+    // Simulate error by clearing location
+    setStatus(prev => ({
+      ...prev,
+      location: null
+    }));
+    // Log typical error format
+    console.warn("GPS Watch Error: User denied Geolocation (Code: 1)");
+  };
+
   const handleUpdatePhoneNumber = async (number: string) => {
     setStatus(prev => ({ ...prev, ownerPhoneNumber: number }));
     
@@ -393,6 +405,10 @@ export default function App() {
         const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
         const url = URL.createObjectURL(blob);
         setCaptures(prev => [...prev, { type: 'VIDEO', url: url, timestamp: new Date() }]);
+        
+        // Notify RemoteControl that recording is finished (to trigger UI cleanup/auto-close)
+        setRecordingFinishedAt(Date.now());
+
         handleAddEvent({
             type: 'SYSTEM',
             severity: 'MEDIUM',
@@ -742,8 +758,8 @@ export default function App() {
       {/* Main Content Area */}
       <div className="max-w-md mx-auto h-screen bg-black/50 relative shadow-2xl overflow-hidden flex flex-col">
         
-        {/* Debug / Simulation Button */}
-        <div className="absolute top-2 right-2 z-50">
+        {/* Debug / Simulation Buttons */}
+        <div className="absolute top-2 right-2 z-50 flex gap-2">
             <button
                 onClick={simulateGPS}
                 className="bg-black/40 backdrop-blur-md border border-gray-700/50 hover:bg-black/80 hover:border-neon-blue text-xs px-3 py-1.5 rounded-full text-gray-300 hover:text-white transition-all duration-300 flex items-center gap-1.5 group shadow-lg"
@@ -751,6 +767,14 @@ export default function App() {
             >
                 <Satellite size={12} className="text-gray-400 group-hover:text-neon-blue group-hover:animate-pulse" />
                 <span className="text-[10px] font-mono tracking-wider">SIMULATE GPS</span>
+            </button>
+            <button
+                onClick={simulateGPSError}
+                className="bg-black/40 backdrop-blur-md border border-gray-700/50 hover:bg-black/80 hover:border-neon-red text-xs px-3 py-1.5 rounded-full text-gray-300 hover:text-white transition-all duration-300 flex items-center gap-1.5 group shadow-lg"
+                title="Simulate GPS Error"
+            >
+                <AlertTriangle size={12} className="text-gray-400 group-hover:text-neon-red" />
+                <span className="text-[10px] font-mono tracking-wider">GPS ERR</span>
             </button>
         </div>
 
@@ -785,6 +809,7 @@ export default function App() {
               onStartRecording={handleStartRecording}
               onStopRecording={handleStopRecording}
               isRecording={isRecording}
+              recordingFinishedAt={recordingFinishedAt}
             />
           )}
           {currentView === AppView.REPORTS && <Reports />}
