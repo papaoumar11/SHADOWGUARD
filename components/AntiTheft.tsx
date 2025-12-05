@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Smartphone, Bell, Eye, Lock, Volume2, Fingerprint, Ghost, AlertTriangle, Unlock } from 'lucide-react';
+import { Smartphone, Bell, Eye, Lock, Volume2, Fingerprint, Ghost, AlertTriangle, Unlock, Zap, Activity } from 'lucide-react';
 import { SecurityEvent } from '../types';
 
 interface AntiTheftProps {
@@ -14,16 +14,58 @@ const AntiTheft: React.FC<AntiTheftProps> = ({ onTriggerAlarm, isAlarmActive, on
   const [sensitivity, setSensitivity] = useState(5);
   const [showConfirm, setShowConfirm] = useState(false);
   
+  // Motion Simulation State
+  const [lastImpact, setLastImpact] = useState<{ value: number, threshold: number, triggered: boolean } | null>(null);
+  const [motionMessage, setMotionMessage] = useState<string | null>(null);
+  
   // Bait Mode State
   const [baitMode, setBaitMode] = useState(false);
   const [baitAttempts, setBaitAttempts] = useState(0);
   const [enteredPin, setEnteredPin] = useState("");
   const [errorShake, setErrorShake] = useState(false);
 
+  // Logic to acknowledge alarm activation for Photo Trap feature
+  useEffect(() => {
+    if (isAlarmActive) {
+        console.log("AntiTheft: System Active. Photo sequence initiated.");
+    }
+  }, [isAlarmActive]);
+
+  const getSensitivityInfo = (val: number) => {
+    if (val <= 3) return { label: 'Faible (Chocs importants)', color: 'text-neon-green', borderColor: 'border-neon-green' };
+    if (val <= 7) return { label: 'Moyen (Standard)', color: 'text-yellow-500', borderColor: 'border-yellow-500' };
+    return { label: 'Ultra Sensible (Moindre vibration)', color: 'text-neon-red', borderColor: 'border-neon-red' };
+  };
+
   // Simulation for web environment
   const triggerMotionSim = () => {
-    if (armed && !isAlarmActive) {
-      setShowConfirm(true);
+    if (!armed || isAlarmActive) return;
+
+    // 1. Calculate Threshold based on Sensitivity (Higher sens = Lower threshold to trigger)
+    // Sens 1 (Low) => Threshold 92
+    // Sens 5 (Mid) => Threshold 60
+    // Sens 10 (High)=> Threshold 20
+    const threshold = 100 - (sensitivity * 8);
+
+    // 2. Generate random impact force for the demo (Range 30 - 90)
+    const impactForce = Math.floor(Math.random() * 60) + 30;
+
+    const triggered = impactForce >= threshold;
+
+    setLastImpact({ value: impactForce, threshold, triggered });
+
+    if (triggered) {
+        // Impact strong enough to trigger alarm
+        setShowConfirm(true);
+        setMotionMessage(null);
+    } else {
+        // Impact too weak for current sensitivity
+        setMotionMessage(`Mouvement ignoré (Force: ${impactForce} < Seuil: ${threshold})`);
+        // Auto clear message
+        setTimeout(() => {
+            setMotionMessage(null);
+            setLastImpact(null);
+        }, 3000);
     }
   };
 
@@ -43,16 +85,11 @@ const AntiTheft: React.FC<AntiTheftProps> = ({ onTriggerAlarm, isAlarmActive, on
     return () => clearTimeout(timer);
   }, [countdown]);
 
-  // Logic to acknowledge alarm activation for Photo Trap feature
-  useEffect(() => {
-    if (isAlarmActive) {
-        console.log("AntiTheft: System Active. Photo sequence initiated.");
-    }
-  }, [isAlarmActive]);
-
   const toggleArming = () => {
     if (armed) {
       setArmed(false);
+      setLastImpact(null);
+      setMotionMessage(null);
     } else {
       setCountdown(3); // 3 seconds to put phone down
     }
@@ -94,6 +131,8 @@ const AntiTheft: React.FC<AntiTheftProps> = ({ onTriggerAlarm, isAlarmActive, on
     setBaitAttempts(0);
     setBaitMode(true);
   };
+
+  const sensInfo = getSensitivityInfo(sensitivity);
 
   return (
     <div className="p-6 space-y-6 pb-24 h-full flex flex-col relative">
@@ -149,7 +188,7 @@ const AntiTheft: React.FC<AntiTheftProps> = ({ onTriggerAlarm, isAlarmActive, on
       </div>
 
       {/* Main Activation Button */}
-      <div className="flex-1 flex flex-col items-center justify-center py-4">
+      <div className="flex-1 flex flex-col items-center justify-center py-4 relative">
         <button
           onClick={toggleArming}
           className={`relative w-48 h-48 rounded-full flex flex-col items-center justify-center transition-all duration-500 border-4 shadow-[0_0_50px_rgba(0,0,0,0.5)] ${
@@ -179,25 +218,59 @@ const AntiTheft: React.FC<AntiTheftProps> = ({ onTriggerAlarm, isAlarmActive, on
         
         <p className="mt-6 text-sm text-gray-400 max-w-[250px] text-center">
           {armed 
-            ? "Ne touchez pas le téléphone. Une alarme retentira en cas de mouvement." 
+            ? "Ne touchez pas le téléphone. Le capteur de mouvement est actif." 
             : "Appuyez pour armer le système. Vous aurez 3 secondes pour poser l'appareil."}
         </p>
+
+        {/* Impact Visualizer for Demo */}
+        {motionMessage && (
+            <div className="absolute top-0 inset-x-0 bg-yellow-500/10 border border-yellow-500/50 text-yellow-500 p-2 rounded text-xs font-bold text-center animate-in slide-in-from-top-2">
+                <Activity size={12} className="inline mr-1" />
+                {motionMessage}
+            </div>
+        )}
       </div>
 
       {/* Sensitivity Slider */}
-      <div className="bg-dark-card p-4 rounded-xl border border-gray-800">
-        <div className="flex justify-between mb-2">
-          <span className="text-sm font-medium">Sensibilité du Capteur</span>
-          <span className="text-xs text-neon-blue">{sensitivity * 10}%</span>
+      <div className={`bg-dark-card p-4 rounded-xl border transition-colors duration-300 ${sensInfo.borderColor}`}>
+        <div className="flex justify-between items-center mb-2">
+          <div className="flex items-center gap-2">
+            <Zap size={16} className={sensInfo.color} />
+            <span className="text-sm font-medium">Sensibilité</span>
+          </div>
+          <span className={`text-xs font-bold ${sensInfo.color}`}>{sensInfo.label}</span>
         </div>
-        <input 
-          type="range" 
-          min="1" 
-          max="10" 
-          value={sensitivity} 
-          onChange={(e) => setSensitivity(parseInt(e.target.value))}
-          className="w-full h-2 bg-dark-surface rounded-lg appearance-none cursor-pointer accent-neon-blue"
-        />
+        
+        <div className="relative h-6 mb-1">
+            <input 
+            type="range" 
+            min="1" 
+            max="10" 
+            value={sensitivity} 
+            onChange={(e) => setSensitivity(parseInt(e.target.value))}
+            className="absolute inset-0 w-full h-2 my-auto bg-dark-surface rounded-lg appearance-none cursor-pointer accent-white z-10 opacity-0"
+            />
+            {/* Custom Track */}
+            <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-2 bg-dark-surface rounded-lg overflow-hidden">
+                <div 
+                    className={`h-full transition-all duration-300 ${
+                        sensitivity <= 3 ? 'bg-neon-green' : sensitivity <= 7 ? 'bg-yellow-500' : 'bg-neon-red'
+                    }`} 
+                    style={{ width: `${sensitivity * 10}%` }}
+                />
+            </div>
+            {/* Custom Thumb Indicator */}
+            <div 
+                className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-lg pointer-events-none transition-all duration-100"
+                style={{ left: `calc(${sensitivity * 10}% - 8px)` }}
+            />
+        </div>
+        
+        <div className="flex justify-between text-[9px] text-gray-500 uppercase font-mono">
+            <span>Statique</span>
+            <span>Balanced</span>
+            <span>Volatile</span>
+        </div>
       </div>
 
       {/* Features List */}
@@ -248,9 +321,18 @@ const AntiTheft: React.FC<AntiTheftProps> = ({ onTriggerAlarm, isAlarmActive, on
       {armed && (
         <button 
           onClick={triggerMotionSim}
-          className="w-full py-3 rounded-xl bg-dark-surface text-gray-400 text-xs border border-dashed border-gray-600 hover:bg-gray-700 transition"
+          className="w-full py-3 rounded-xl bg-dark-surface text-gray-400 text-xs border border-dashed border-gray-600 hover:bg-gray-700 transition relative overflow-hidden active:scale-95"
         >
-          [DEMO] SIMULER MOUVEMENT
+          {lastImpact && (
+             <div className="absolute inset-0 bg-red-500/20 pointer-events-none animate-pulse"></div>
+          )}
+          [DEMO] SIMULER CHOC / MOUVEMENT
+          {lastImpact && (
+             <span className="block text-[10px] text-gray-500 mt-1">
+                 Force: {lastImpact.value} / Seuil: {lastImpact.threshold} 
+                 {lastImpact.triggered ? " (DÉCLENCHÉ)" : " (IGNORÉ)"}
+             </span>
+          )}
         </button>
       )}
 
@@ -262,9 +344,9 @@ const AntiTheft: React.FC<AntiTheftProps> = ({ onTriggerAlarm, isAlarmActive, on
                     <Volume2 size={32} className="text-neon-red animate-pulse" />
                 </div>
                 
-                <h3 className="text-xl font-bold text-white mb-2">Attention</h3>
+                <h3 className="text-xl font-bold text-white mb-2">Mouvement Détecté !</h3>
                 <p className="text-gray-300 text-sm mb-6 leading-relaxed">
-                    Voulez-vous vraiment déclencher l'alarme ?
+                    Le capteur a dépassé le seuil de tolérance. Déclencher l'alarme ?
                 </p>
                 
                 <div className="flex gap-3">
@@ -278,7 +360,7 @@ const AntiTheft: React.FC<AntiTheftProps> = ({ onTriggerAlarm, isAlarmActive, on
                         onClick={confirmAlarm}
                         className="flex-1 py-3 rounded-lg bg-neon-red text-black font-bold hover:bg-red-500 transition shadow-[0_0_20px_rgba(255,0,60,0.3)] text-sm"
                     >
-                        Confirmer
+                        DÉCLENCHER
                     </button>
                 </div>
             </div>

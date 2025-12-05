@@ -10,6 +10,7 @@ interface RemoteControlProps {
   onStartRecording: () => void;
   onStopRecording: () => void;
   isRecording: boolean;
+  recordingFinishedAt: number | null;
 }
 
 const RemoteControl: React.FC<RemoteControlProps> = ({ 
@@ -19,7 +20,8 @@ const RemoteControl: React.FC<RemoteControlProps> = ({
     onRemoteWipe,
     onStartRecording,
     onStopRecording,
-    isRecording
+    isRecording,
+    recordingFinishedAt
 }) => {
   const [activeAction, setActiveAction] = useState<string | null>(null);
   const [successAction, setSuccessAction] = useState<string | null>(null);
@@ -74,6 +76,21 @@ const RemoteControl: React.FC<RemoteControlProps> = ({
     };
   }, [activeAction, isRecording]);
 
+  // Watch for recording finished signal to auto-close camera
+  useEffect(() => {
+    if (recordingFinishedAt && activeAction === 'CAMERA') {
+        // Recording just finished. Wait 2 seconds, then close.
+        const closeTimer = setTimeout(() => {
+            setClosingCamera(true);
+            setTimeout(() => {
+                setActiveAction(null);
+                setClosingCamera(false);
+            }, 1000);
+        }, 2000);
+        return () => clearTimeout(closeTimer);
+    }
+  }, [recordingFinishedAt]);
+
   const performAction = async (action: string) => {
     // Prevent overlapping actions unless toggling recording inside camera view
     if (activeAction && action !== 'VIDEO_TOGGLE') return;
@@ -86,14 +103,7 @@ const RemoteControl: React.FC<RemoteControlProps> = ({
     if (action === 'VIDEO_TOGGLE') {
         if (isRecording) {
             onStopRecording();
-            // Allow auto-close to happen after a brief delay (2 seconds) now that recording stopped
-            setTimeout(() => {
-                setClosingCamera(true);
-                setTimeout(() => {
-                    setActiveAction(null);
-                    setClosingCamera(false);
-                }, 1000);
-            }, 2000);
+            // Auto-close is now handled by the useEffect watching recordingFinishedAt
         } else {
             onStartRecording();
             // Ensure we are in camera visual mode
