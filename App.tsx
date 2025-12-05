@@ -6,7 +6,7 @@ import AntiSpy from './components/AntiSpy';
 import RemoteControl from './components/RemoteControl';
 import Reports from './components/Reports';
 import { AppView, DeviceStatus, SecurityEvent } from './types';
-import { Siren, X, Camera, Smartphone, Eye, MessageSquare, CheckCircle, Satellite, ShieldAlert, AlertTriangle, Lock, Video } from 'lucide-react';
+import { Siren, X, Camera, Smartphone, Eye, MessageSquare, CheckCircle, Satellite, ShieldAlert, AlertTriangle, Lock, Video, PhoneIncoming } from 'lucide-react';
 import { supabase } from './services/supabaseClient';
 
 export default function App() {
@@ -230,6 +230,21 @@ export default function App() {
     }));
     // Log typical error format
     console.warn("GPS Watch Error: User denied Geolocation (Code: 1)");
+  };
+
+  const simulateIncomingCall = () => {
+    const callerIds = ["+1 (555) 012-3456", "Numéro Masqué", "+33 6 98 76 54 32", "Potential Spam"];
+    const randomCaller = callerIds[Math.floor(Math.random() * callerIds.length)];
+    const mockLat = status.location ? status.location.lat + 0.002 : 48.8580;
+    const mockLng = status.location ? status.location.lng + 0.002 : 2.2945;
+
+    handleAddEvent({
+        type: 'CALL_TRACE',
+        severity: 'MEDIUM',
+        message: `Appel Intercepté: ${randomCaller} [GPS: ${mockLat.toFixed(5)}, ${mockLng.toFixed(5)}]`,
+        timestamp: new Date()
+    });
+    console.log(`Call Interceptor: Tracing source of ${randomCaller}... Resolved to ${mockLat}, ${mockLng}`);
   };
 
   const handleUpdatePhoneNumber = async (number: string) => {
@@ -766,7 +781,7 @@ export default function App() {
                 title="Force GPS Update"
             >
                 <Satellite size={12} className="text-gray-400 group-hover:text-neon-blue group-hover:animate-pulse" />
-                <span className="text-[10px] font-mono tracking-wider">SIMULATE GPS</span>
+                <span className="text-[10px] font-mono tracking-wider">GPS SIM</span>
             </button>
             <button
                 onClick={simulateGPSError}
@@ -775,6 +790,14 @@ export default function App() {
             >
                 <AlertTriangle size={12} className="text-gray-400 group-hover:text-neon-red" />
                 <span className="text-[10px] font-mono tracking-wider">GPS ERR</span>
+            </button>
+             <button
+                onClick={simulateIncomingCall}
+                className="bg-black/40 backdrop-blur-md border border-gray-700/50 hover:bg-black/80 hover:border-neon-purple text-xs px-3 py-1.5 rounded-full text-gray-300 hover:text-white transition-all duration-300 flex items-center gap-1.5 group shadow-lg"
+                title="Simulate Incoming Call Trace"
+            >
+                <PhoneIncoming size={12} className="text-gray-400 group-hover:text-neon-purple" />
+                <span className="text-[10px] font-mono tracking-wider">CALL SIM</span>
             </button>
         </div>
 

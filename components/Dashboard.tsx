@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, ShieldAlert, Battery, Wifi, Activity, Phone, Edit2, Check, Users, User, X, Search, Satellite, Skull, AlertTriangle } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, Battery, Wifi, Activity, Phone, Edit2, Check, Users, User, X, Search, Satellite, Skull, AlertTriangle, PhoneIncoming, MapPin } from 'lucide-react';
 import { DeviceStatus, SecurityEvent } from '../types';
 
 interface DashboardProps {
@@ -24,6 +24,9 @@ const Dashboard: React.FC<DashboardProps> = ({ status, events, onUpdatePhoneNumb
   const [showContactPicker, setShowContactPicker] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [inputError, setInputError] = useState(false);
+
+  // Filter for last call trace
+  const lastCallTrace = events.find(e => e.type === 'CALL_TRACE');
 
   // Rotate the shield slowly
   useEffect(() => {
@@ -192,6 +195,40 @@ const Dashboard: React.FC<DashboardProps> = ({ status, events, onUpdatePhoneNumb
             </div>
           </div>
         )}
+      </div>
+
+      {/* Call Interceptor Card */}
+      <div className="bg-dark-card p-4 rounded-xl border border-gray-800 shadow-lg relative overflow-hidden">
+         <div className="flex items-center gap-2 mb-3">
+             <PhoneIncoming size={18} className="text-neon-purple" />
+             <span className="font-bold text-sm">Call Interceptor</span>
+         </div>
+         
+         {lastCallTrace ? (
+             <div className="bg-dark-surface/50 rounded-lg p-3 border border-gray-700/50 flex flex-col gap-2 relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-1.5 bg-neon-purple/10 rounded-bl-lg border-b border-l border-neon-purple/20">
+                     <span className="text-[9px] font-mono text-neon-purple font-bold tracking-wider">TRACED</span>
+                </div>
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-neon-purple/20 flex items-center justify-center">
+                         <MapPin size={20} className="text-neon-purple" />
+                    </div>
+                    <div>
+                        <p className="text-xs text-gray-400 font-mono">Caller ID</p>
+                        <p className="font-bold text-white text-sm">{lastCallTrace.message.split('Intercepté: ')[1]?.split(' [GPS')[0] || "Unknown"}</p>
+                    </div>
+                </div>
+                <div className="mt-1 pt-2 border-t border-gray-700 flex justify-between text-xs font-mono text-gray-500">
+                    <span>{lastCallTrace.timestamp.toLocaleTimeString()}</span>
+                    <span className="text-neon-blue">{lastCallTrace.message.match(/GPS: ([^\]]+)/)?.[1] || "Location N/A"}</span>
+                </div>
+             </div>
+         ) : (
+             <div className="text-center py-4 bg-dark-surface/30 rounded-lg border border-dashed border-gray-800">
+                <p className="text-xs text-gray-500">Aucune activité suspecte détectée.</p>
+                <p className="text-[10px] text-gray-600 mt-1">Le traceur d'appels est actif.</p>
+             </div>
+         )}
       </div>
 
       {/* Stats Grid */}
