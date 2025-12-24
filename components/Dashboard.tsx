@@ -81,11 +81,21 @@ const Dashboard: React.FC<DashboardProps> = ({ status, events, onUpdatePhoneNumb
           
           <div className="z-10 flex flex-col items-center">
             {status.isProtected ? (
-              <ShieldCheck size={48} className="text-neon-blue mb-2" />
+              <ShieldCheck 
+                size={48} 
+                className="text-neon-blue mb-2 animate-glow drop-shadow-[0_0_15px_rgba(0,243,255,0.6)] transition-all duration-500" 
+              />
             ) : (
-              <ShieldAlert size={48} className="text-neon-red mb-2 animate-bounce" />
+              <ShieldAlert 
+                size={48} 
+                className="text-neon-red mb-2 animate-bounce drop-shadow-[0_0_15px_rgba(255,0,60,0.6)] transition-all duration-500" 
+              />
             )}
-            <span className={`text-2xl font-bold ${status.isProtected ? 'text-neon-blue' : 'text-neon-red'}`}>
+            <span className={`text-2xl font-bold transition-all duration-500 tracking-tighter ${
+              status.isProtected 
+                ? 'text-neon-blue animate-glow drop-shadow-[0_0_10px_rgba(0,243,255,0.4)]' 
+                : 'text-neon-red animate-pulse-fast drop-shadow-[0_0_10px_rgba(255,0,60,0.4)]'
+            }`}>
               {status.isProtected ? 'SÉCURISÉ' : 'VULNÉRABLE'}
             </span>
           </div>

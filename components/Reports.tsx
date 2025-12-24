@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, LineChart, Line } from 'recharts';
-import { FileText, Download, PhoneIncoming, MapPin, Clock } from 'lucide-react';
+import { FileText, Download, PhoneIncoming, MapPin, Clock, Map, X } from 'lucide-react';
 import { SecurityEvent } from '../types';
 
 interface ReportsProps {
@@ -18,6 +18,8 @@ const data = [
 ];
 
 const Reports: React.FC<ReportsProps> = ({ events = [] }) => {
+  const [selectedLoc, setSelectedLoc] = useState<{ lat: number; lng: number; caller: string } | null>(null);
+
   // Filter for Call Trace events
   const callLogs = events.filter(e => e.type === 'CALL_TRACE').slice(0, 5);
 
@@ -42,6 +44,54 @@ const Reports: React.FC<ReportsProps> = ({ events = [] }) => {
 
   return (
     <div className="p-6 space-y-6 pb-24 h-full overflow-y-auto">
+      {/* Map Modal */}
+      {selectedLoc && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-dark-card border border-gray-800 w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="p-4 border-b border-gray-800 flex items-center justify-between bg-dark-surface/50">
+              <div className="flex items-center gap-2">
+                <MapPin size={18} className="text-neon-blue" />
+                <div>
+                  <h4 className="text-sm font-bold text-white">Position de l'appel</h4>
+                  <p className="text-[10px] text-gray-500 font-mono">{selectedLoc.caller}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setSelectedLoc(null)}
+                className="p-1 hover:bg-gray-800 rounded-full text-gray-400 hover:text-white transition"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="h-64 bg-black relative">
+              <iframe
+                title="Location Map"
+                width="100%"
+                height="100%"
+                frameBorder="0"
+                style={{ border: 0 }}
+                src={`https://maps.google.com/maps?q=${selectedLoc.lat},${selectedLoc.lng}&z=15&output=embed`}
+                allowFullScreen
+              ></iframe>
+              <div className="absolute bottom-2 left-2 bg-black/80 px-2 py-1 rounded border border-neon-blue/30 text-[9px] font-mono text-neon-blue">
+                GPS: {selectedLoc.lat.toFixed(5)}, {selectedLoc.lng.toFixed(5)}
+              </div>
+            </div>
+            
+            <div className="p-4 text-center">
+               <p className="text-xs text-gray-400 mb-4 italic">Note: Cette localisation est basée sur la triangulation satellite la plus proche au moment de l'appel.</p>
+               <button 
+                onClick={() => setSelectedLoc(null)}
+                className="w-full py-2 bg-neon-blue text-black font-bold rounded-lg text-sm hover:opacity-90 transition"
+               >
+                 Fermer
+               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="text-center">
         <h2 className="text-2xl font-bold text-white mb-1">Rapport de Sécurité</h2>
         <p className="text-gray-400 text-sm">Analyses hebdomadaires</p>
@@ -112,13 +162,25 @@ const Reports: React.FC<ReportsProps> = ({ events = [] }) => {
                       </div>
                    </div>
                    
-                   <div className="flex items-center gap-2 text-xs">
-                      <div className="p-1 rounded-full bg-neon-purple/10">
-                        <MapPin size={12} className="text-neon-purple" />
+                   <div className="flex items-center justify-between gap-2 text-xs">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1 rounded-full bg-neon-purple/10">
+                          <MapPin size={12} className="text-neon-purple" />
+                        </div>
+                        <span className="text-gray-300 font-mono text-[10px]">
+                          {getCityFromCoords(info.lat, info.lng)}
+                        </span>
                       </div>
-                      <span className="text-gray-300 font-mono text-[10px]">
-                        {getCityFromCoords(info.lat, info.lng)}
-                      </span>
+                      
+                      {info.lat && info.lng && (
+                        <button 
+                          onClick={() => setSelectedLoc({ lat: info.lat!, lng: info.lng!, caller: info.caller })}
+                          className="flex items-center gap-1 text-[10px] text-neon-blue hover:text-white transition group/btn bg-neon-blue/5 px-2 py-1 rounded border border-neon-blue/20 hover:border-neon-blue/50"
+                        >
+                          <Map size={10} className="group-hover/btn:scale-110 transition" />
+                          Voir Carte
+                        </button>
+                      )}
                    </div>
                    
                    {/* Decorative corner */}

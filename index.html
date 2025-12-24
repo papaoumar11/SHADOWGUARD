@@ -29,11 +29,16 @@
             animation: {
               'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
               'scan': 'scan 2s linear infinite',
+              'glow': 'glow 3s ease-in-out infinite',
             },
             keyframes: {
               scan: {
                 '0%': { transform: 'translateY(-100%)' },
                 '100%': { transform: 'translateY(100%)' },
+              },
+              glow: {
+                '0%, 100%': { filter: 'drop-shadow(0 0 5px currentColor)', opacity: '1' },
+                '50%': { filter: 'drop-shadow(0 0 15px currentColor)', opacity: '0.85' },
               }
             }
           },
@@ -75,6 +80,6 @@
 </head>
   <body class="bg-dark-bg text-white antialiased">
     <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
+    <script type="module" src="./index.tsx"></script>
   </body>
 </html>
